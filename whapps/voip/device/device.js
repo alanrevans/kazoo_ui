@@ -58,7 +58,8 @@ winkstart.module('voip', 'device', {
             ],
             smartphone: [
                 { name: '#name',                regex: /^[a-zA-Z0-9\s_']+$/ },
-                { name: '#call_forward_number', regex: /^[\+]?[0-9\s\-\.\(\)]*$/ }
+                { name: '#imsi',                regex: /^[0-9]{15}$/ },
+                { name: '#msisdn',              regex: /^[\+]?[0-9\s\-\.\(\)]*$/ }
             ],
             landline: [
                 { name: '#name',                regex: /^[a-zA-Z0-9\s_']+$/ },
@@ -128,7 +129,13 @@ winkstart.module('voip', 'device', {
                 url: '{api_url}/accounts/{account_id}',
                 contentType: 'application/json',
                 verb: 'GET'
+            },
+            'device.upload': {
+                url: '{api_url}/accounts/{account_id}/devices/{device_id}/triplets',
+                contentType: 'text/csv',
+                verb: 'POST'
             }
+
         }
     },
 
@@ -293,14 +300,15 @@ winkstart.module('voip', 'device', {
                             },
                             fax: {
                                 option: 'auto'
-                            }
+                            },
+                            ignore_early_media: true
                         },
                         sip: {
                             method: 'password',
                             invite_format: 'username',
                             username: 'user_' + winkstart.random_string(6),
                             password: winkstart.random_string(12),
-                            expire_seconds: '360'
+                            expire_seconds: '3600'
                         },
                         call_forward: {},
                         music_on_hold: {}
@@ -460,6 +468,22 @@ winkstart.module('voip', 'device', {
             }
         },
 
+        upload_file: function(data, device_id, callback) {
+            winkstart.request('device.upload', {
+                    account_id: winkstart.apps.voip.account_id,
+                    api_url: winkstart.apps.voip.api_url,
+                    device_id: device_id,
+                    data: data
+                },
+                function(_data, status) {
+                    if(typeof callback === 'function') {
+                        callback();
+                    }
+                },
+                winkstart.error_message.process_error()
+            );
+        },
+
         render_device: function(data, target, callbacks){
             var THIS = this,
                 device_html,
@@ -497,6 +521,10 @@ winkstart.module('voip', 'device', {
                     !$('#owner_id option:selected', device_html).val() ? $('#edit_link', device_html).hide() : $('#edit_link', device_html).show();
                 });
 
+            if(data.data.upload_triplet) {
+                $('#upload_div', device_html).hide();
+            }
+
                 $('.inline_action', device_html).click(function(ev) {
                     var _data = ($(this).dataset('action') == 'edit') ? { id: $('#owner_id', device_html).val() } : {},
                         _id = _data.id;
@@ -524,6 +552,37 @@ winkstart.module('voip', 'device', {
                     });
                 });
 
+
+            $('#change_link', device_html).click(function(ev) {
+                ev.preventDefault();
+                $('#upload_div', device_html).show();
+                $('.player_file', device_html).hide();
+            });
+
+            $('#download_link', device_html).click(function(ev) {
+                ev.preventDefault();
+                window.location.href = winkstart.apps['voip'].api_url + '/accounts/' +
+                                       winkstart.apps['voip'].account_id + '/media/' +
+                                       data.data.upload_triplet + '/text?auth_token=' + winkstart.apps['voip'].auth_token;
+            });
+
+            $('#file', device_html).bind('change', function(evt){
+                var files = evt.target.files;
+
+                if(files.length > 0) {
+                    var reader = new FileReader();
+
+                    file = 'updating';
+                    reader.onloadend = function(evt) {
+                        var data = evt.target.result;
+
+                        file = data;
+                    }
+
+                    reader.readAsDataURL(files[0]);
+                }
+            });
+
                 $('.device-save', device_html).click(function(ev) {
                     ev.preventDefault();
 
@@ -536,8 +595,29 @@ winkstart.module('voip', 'device', {
                                 delete data.field_data;
                             }
 
-                            THIS.save_device(form_data, data, callbacks.save_success, winkstart.error_message.process_error(callbacks.save_error));
-                        },
+                            THIS.save_device(form_data, data, function(_data, status) {
+                                if($('#upload_div', device_html).is(':visible') && $('#file').val() != '') {
+                                    if(file === 'updating') {
+                                        winkstart.alert('The file you want to apply is still being processed by the page. Please wait a couple of seconds and try again.');
+                                    }
+                                    else {
+                                        winkstart.alert('AlanE: Debug upload triplet file');
+                                        THIS.upload_file(file, _data.data.id, function() {
+                                            if(typeof callbacks.save_success == 'function') {
+                                                callbacks.save_success(_data, status);
+                                            }
+                                        });
+                                    }
+                                }
+                                else {
+                                    if(typeof callbacks.save_success == 'function') {
+                                        callbacks.save_success(_data, status);
+                                    }
+                                }
+                            },
+                            winkstart.error_message.process_error(callbacks.save_error)
+                        );
+                   },
                         function() {
                             winkstart.alert('There were errors on the form, please correct!');
                         }
@@ -656,7 +736,7 @@ winkstart.module('voip', 'device', {
         },
 
         format_data: function(data) {
-            if(data.data.device_type === 'smartphone' || data.data.device_type === 'landline' || data.data.device_type === 'cellphone') {
+            if(data.data.device_type === 'landline' || data.data.device_type === 'cellphone') {
                 data.data.call_forward = {
                     enabled: true,
                     require_keypress: true,
@@ -672,6 +752,11 @@ winkstart.module('voip', 'device', {
             if(data.data.device_type === 'sip_uri') {
                 data.data.sip.invite_format = 'route';
             }
+
+            if(data.data.description != undefined && data.data.description.substr(0,12) == 'C:\\fakepath\\') {
+                data.data.description = data.data.description.substr(12);
+            }
+
         },
 
         migrate_data: function(data) {
@@ -779,7 +864,7 @@ winkstart.module('voip', 'device', {
                 form_data.media.video.codecs = $.map(form_data.media.video.codecs, function(val) { return (val) ? val : null });
             }
 
-            if(form_data.device_type == 'smartphone' || form_data.device_type == 'landline' || form_data.device_type == 'cellphone') {
+            if(form_data.device_type == 'landline' || form_data.device_type == 'cellphone') {
                 form_data.call_forward.number = form_data.call_forward.number.replace(/\s|\(|\)|\-|\./g,'');
                 form_data.enabled = form_data.call_forward.enabled;
             }
@@ -789,6 +874,12 @@ winkstart.module('voip', 'device', {
             }
             else {
                 form_data.suppress_unregister_notifications = true;
+            }
+
+            form_data.description = form_data.upload_triplet;
+
+            if(form_data.description == '') {
+                delete form_data.description;
             }
 
             delete form_data.extra;
@@ -849,7 +940,7 @@ winkstart.module('voip', 'device', {
 
                     /* Cell/SmartPhones, SIP URIs, Landlines are always registered */
                     $.each(data.data, function(k, v) {
-                        if($.inArray(v.device_type, ['smartphone', 'landline', 'cellphone', 'sip_uri']) > -1) {
+                        if($.inArray(v.device_type, ['landline', 'cellphone', 'sip_uri']) > -1) {
                             if(v.enabled === false) {
                                 $('#' + v.id, $('#device-listpanel', parent)).addClass('disabled');
                             }

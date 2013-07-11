@@ -16,7 +16,7 @@
 		<ul class="tabs" data-tabs="tabs">
 		 	<li class="active"><a href="#basic">Basic</a></li>
 		 	<li><a href="#options"><span class="icon wrench_screw"></span>Options</a></li>
-		 	<li><a href="#sip_settings">Wifi Calling</a></li>
+		 	<li><a href="#sip_settings">GAN Settings</a></li>
 		</ul>
 		<form id="device-form" action="" method="post">
 			<div class="pill-content">
@@ -190,6 +190,31 @@
 						<div class="input">
 							<input class="span4" id="sip_expire_seconds" name="sip.expire_seconds" type="text" placeholder="Expire Seconds" value="${data.sip.expire_seconds}" rel="popover" data-content="Enter the expiration time of this device (in seconds)"/>
 						</div>
+					</div>
+					<div class="clearfix">
+						<label for="imsi">IMSI</label>
+						<div class="input">
+							<input class="span4" id="imsi" name="imsi" type="text"/>
+						</div>
+					</div>
+					<div class="clearfix">
+                                            <label for="fileInput">Triplet File</label>
+                                            <div id="upload_div" class="input">
+                                                <input class="input-file" id="file" name="upload_triplet" type="file">
+                                            </div>
+                    {{if data.id }}
+                                        <div class="input player_file">
+                                                <span class="uneditable-input">${data.description}</span>
+                                        </div>
+                                        <div class="clearfix player_file">
+                                                <div class="input">
+                                                    <button class="btn" id="change_link">Change File</button>
+                                                    <button class="btn" id="download_link">Download File</button>
+                                                </div>
+                                        </div>
+                     {{else}}
+                                    </div>
+                     {{/if}}
 					</div>
 				</div>
 			</div>
