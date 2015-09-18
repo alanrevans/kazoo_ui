@@ -16,7 +16,6 @@ winkstart.module('voip', 'voip', {
 
     function() {
         var THIS = this;
-
         if('modules' in winkstart.apps[THIS.__module]) {
             if('whitelist' in winkstart.apps[THIS.__module].modules) {
                 THIS.modules = {};
@@ -60,11 +59,14 @@ winkstart.module('voip', 'voip', {
          */
         modules: winkstart.config.voip_modules || {
             'account': false,
+            'bulk': false,
             'media': false,
             'device': false,
             'callflow': false,
             'conference': false,
+            'groups': false,
             'user': false,
+            'phone': false,
             'vmbox': false,
             'menu': false,
             'registration': false,
@@ -183,7 +185,6 @@ winkstart.module('voip', 'voip', {
         execute_request: function(data) {
             var THIS = this,
                 data_default = {
-                    api_url: winkstart.apps.voip.api_url,
                     account_id: winkstart.apps.voip.account_id,
                     account_name: 'N/A',
                     account_realm: 'N/A',
@@ -228,7 +229,7 @@ winkstart.module('voip', 'voip', {
                         map_devices = {};
 
                     $.each(_data.data, function(k, v) {
-                        this.enabled === false ? cpt_disabled++ : (this.device_type === 'cellphone' ? cpt_enabled_cell ++ : true);
+                        this.enabled === false ? cpt_disabled++ : ($.inArray(this.device_type, ['cellphone', 'landline', 'sip_uri']) > -1 ? cpt_enabled_cell ++ : true);
                         map_devices[this.id] = true;
                     });
 
@@ -254,18 +255,12 @@ winkstart.module('voip', 'voip', {
                             var cpt_registered = data_registered.length + cpt_enabled_cell,
                                 cpt_unregistered = cpt_devices - cpt_registered - cpt_disabled
                                 data = [
-                                    ['Devices', 'Number'],
                                     ['Disabled', cpt_disabled],
                                     ['Unregistered', cpt_unregistered],
                                     ['Registered', cpt_registered]
                                 ],
                                 opt = {
-                                    slices: {
-                                        0: {color: 'red'},
-                                        1: {color: 'orange'},
-                                        2: {color: 'green'}
-                                    },
-                                    sliceVisibilityThreshold: 0
+                                    seriesColors: ['red', 'orange', 'green']
                                 },
                                 chart = new winkstart.chart('pie_chart_wrapper', data, opt);
                         },
@@ -353,7 +348,7 @@ winkstart.module('voip', 'voip', {
                 function(_data, status) {
                     var cpt_callflows = 0;
                     $.each(_data.data, function() {
-                        if(!(this.featurecode && 'name' in this.featurecode)) {
+                        if(!(this.featurecode && 'name' in this.featurecode) && !(this.numbers && $.inArray("no_match",this.numbers)>=0)) {
                             cpt_callflows++;
                         }
                     });

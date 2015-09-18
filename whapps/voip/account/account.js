@@ -19,6 +19,10 @@ winkstart.module('voip', 'account', {
                 { name: '#caller_id_number_internal',    regex: /^[\+]?[0-9\s\-\.\(\)]*$/ },
                 { name: '#caller_id_name_emergency',     regex: /^[0-9A-Za-z ,]{0,15}$/ },
                 { name: '#caller_id_number_emergency',   regex: /^[\+]?[0-9\s\-\.\(\)]*$/ },
+                { name: '#contact_billing_email',        regex: /^([0-9A-Za-z_\-\+\.]+@[0-9A-Za-z_\-\.]+\.[0-9A-Za-z]+)?$/ },
+                { name: '#contact_billing_number',       regex: /^[\+]?[0-9\s\-\.\(\)]*$/ },
+                { name: '#contact_technical_email',      regex: /^([0-9A-Za-z_\-\+\.]+@[0-9A-Za-z_\-\.]+\.[0-9A-Za-z]+)?$/ },
+                { name: '#contact_technical_number',     regex: /^[\+]?[0-9\s\-\.\(\)]*$/ }
         ],
 
         resources: {
@@ -111,47 +115,71 @@ winkstart.module('voip', 'account', {
                             external: {},
                             emergency: {}
                         },
+                        contact: {
+                            technical: {},
+                            billing: {}
+                        },
                         music_on_hold: {}
                     }, data_defaults || {}),
                     field_data: {}
                 };
 
-             winkstart.request(true, 'media.list', {
-                    account_id: winkstart.apps['voip'].account_id,
-                    api_url: winkstart.apps['voip'].api_url
-                },
-                function(_data, status) {
-                    _data.data.unshift({
-                        id: '',
-                        name: '- Not set -'
-                    });
-
-                    defaults.field_data.media = _data.data;
-
-                    if(typeof data == 'object' && data.id) {
-                        winkstart.request(true, 'account.get', {
-                                account_id: data.id,
+            winkstart.parallel({
+                    media_list: function(callback) {
+                        winkstart.request(true, 'media.list', {
+                                account_id: winkstart.apps['voip'].account_id,
                                 api_url: winkstart.apps['voip'].api_url
                             },
                             function(_data, status) {
-                                THIS.migrate_data(_data);
+                                _data.data.unshift(
+                                    {
+                                        id: '',
+                                        name: 'Default Music'
+                                    },
+                                    {
+                                        id: 'silence_stream://300000',
+                                        name: 'Silence'
+                                    }
+                                );
 
-                                THIS.format_data(_data);
+                                defaults.field_data.media = _data.data;
 
-                                THIS.render_account($.extend(true, defaults, _data), target, callbacks);
-
-                                if(typeof callbacks.after_render == 'function') {
-                                    callbacks.after_render();
-                                }
+                                callback(null, _data);
                             }
                         );
-                    }
-                    else {
-                        THIS.render_account(defaults, target, callbacks);
+                    },
 
-                        if(typeof callbacks.after_render == 'function') {
-                            callbacks.after_render();
+                    get_account: function(callback) {
+                        if(typeof data == 'object' && data.id) {
+                            winkstart.request(true, 'account.get', {
+                                    account_id: data.id,
+                                    api_url: winkstart.apps['voip'].api_url
+                                },
+                                function(_data, status) {
+                                    THIS.migrate_data(_data);
+
+                                    THIS.format_data(_data);
+
+                                    callback(null, _data);
+                                }
+                            );
                         }
+                        else {
+                            callback(null, defaults);
+                        }
+                    }
+                },
+                function(err, results) {
+                    var render_data = defaults;
+
+                    if(typeof data == 'object' && data.id) {
+                        render_data = $.extend(true, defaults, results.get_account);
+                    }
+
+                    THIS.render_account(defaults, target, callbacks);
+
+                    if(typeof callbacks.after_render == 'function') {
+                        callbacks.after_render();
                     }
                 }
             );
@@ -187,7 +215,7 @@ winkstart.module('voip', 'account', {
                 data.field_data = {};
             }
 
-            if(data.data.music_on_hold && 'media_id' in data.data.music_on_hold) {
+            if(data.data.music_on_hold && 'media_id' in data.data.music_on_hold && data.data.music_on_hold.media_id !== 'silence_stream://300000') {
                 data.data.music_on_hold.media_id = data.data.music_on_hold.media_id.split('/')[2];
             }
         },
@@ -197,7 +225,7 @@ winkstart.module('voip', 'account', {
             form_data.caller_id.emergency.number = form_data.caller_id.emergency.number.replace(/\s|\(|\)|\-|\./g, '');
             form_data.caller_id.external.number = form_data.caller_id.external.number.replace(/\s|\(|\)|\-|\./g, '');
 
-            if(form_data.music_on_hold && form_data.music_on_hold.media_id) {
+            if(form_data.music_on_hold && form_data.music_on_hold.media_id && form_data.music_on_hold.media_id !== 'silence_stream://300000') {
                 form_data.music_on_hold.media_id = '/' + winkstart.apps['voip'].account_id + '/' + form_data.music_on_hold.media_id;
             }
 
@@ -232,7 +260,12 @@ winkstart.module('voip', 'account', {
 
         render_account: function(data, target, callbacks) {
             var THIS = this,
-                account_html = THIS.templates.edit.tmpl(data);
+                account_html = THIS.templates.edit.tmpl(data),
+                $tech_email = $('#contact_technical_email', account_html),
+                $tech_number = $('#contact_technical_number', account_html),
+                $bill_email = $('#contact_billing_email', account_html),
+                $bill_number = $('#contact_billing_number', account_html),
+                is_identical_contact = false;
 
             winkstart.validate.set(THIS.config.validation, account_html);
 
@@ -274,6 +307,38 @@ winkstart.module('voip', 'account', {
                 });
             });
 
+            $('#contact_copy_checkbox', account_html).change(function() {
+                if($('#contact_copy_checkbox', account_html).attr('checked')) {
+                    $tech_email.val($bill_email.val());
+                    $tech_number.val($bill_number.val());
+                    $('.contact-technical', account_html).slideUp();
+                    is_identical_contact = true;
+                } else {
+                    $('.contact-technical', account_html).slideDown();
+                    is_identical_contact = false;
+                }
+            });
+
+            $bill_email.keyup(function() {
+                if(is_identical_contact) {
+                    $tech_email.val($bill_email.val());
+                }
+            });
+
+            $bill_number.keyup(function() {
+                if(is_identical_contact) {
+                    $tech_number.val($bill_number.val());
+                }
+            });
+
+            // if at least one field isn't empty, and technical fields are equals to billing fields
+            if( ($tech_email.val().length>0 || $tech_number.val().length>0)
+              && $tech_number.val() == $bill_number.val() && $tech_email.val() == $bill_email.val()) {
+                $('#contact_copy_checkbox', account_html).attr('checked','checked');
+                $('.contact-technical', account_html).hide();
+                is_identical_contact = true;
+            }
+
             if(!$('#music_on_hold_media_id', account_html).val()) {
                 $('#edit_link_media', account_html).hide();
             }
@@ -310,11 +375,15 @@ winkstart.module('voip', 'account', {
                 });
             });
 
-            winkstart.link_form(account_html);
+            var final_render = function() {
+            	(target)
+                	.empty()
+                	.append(account_html);
+            };
 
-            (target)
-                .empty()
-                .append(account_html);
+			if(winkstart.publish('call_center.render_account_fields', $(account_html), data, final_render)) {
+				final_render();
+			}
         },
 
         activate: function(parent) {

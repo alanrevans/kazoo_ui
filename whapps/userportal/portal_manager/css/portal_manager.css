@@ -22,9 +22,30 @@
 }
 
 .portal-view .right_part {
-    width: 388px;
+    width: 400px;
     float: left;
     border-left: 1px solid #333;
+}
+
+.portal-view .bottom_part {
+    border-top: 1px solid #555;
+    float: left;
+    width: 1000px;
+    padding: 20px;
+}
+
+.portal-view .bottom_part .contact_title {
+    float: left;
+}
+
+.portal-view .bottom_part .link-quickcall {
+    color: #05addc;
+    text-decoration: underline;
+}
+
+.portal-view .bottom_part #manual_number {
+    margin: 0 10px;
+    width: 140px;
 }
 
 .portal-view .block {
@@ -34,10 +55,12 @@
 
 .portal-view .left_part .block:first-child, .portal-view .right_part .block:first-child {
     border-bottom: 1px solid #333;
+    border-top: 1px solid #555;
 }
 
 .portal-view .left_part .block:last-child, .portal-view .right_part .block:last-child {
     border-top: 1px solid #555;
+    border-bottom: 1px solid #333;
 }
 
 .portal-view .buttons {
@@ -150,7 +173,7 @@
     border-radius: 5px;
     padding: 10px 0;
     margin: 10px 0;
-    max-height: 200px;
+    max-height: 170px;
     overflow: auto;
 }
 
@@ -189,72 +212,3 @@
     color: #bbb;
     font-style: italic;
 }
-/**************************
-----TOP TABS MEDIA---------
-****************************/
-.inline_popup.userportal_device .media_tabs {
-	background-color: #555555;
-    border: 1px solid #363636;
-	min-height: 90px;
-	padding: 10px 0 10px 10px;
-	position:relative;
-    -moz-border-radius: 12px;
-    -webkit-border-radius: 12px;
-    border-radius: 12px;
-    overflow-x: auto;
-    white-space: nowrap;
-}
-
-.inline_popup.userportal_device .media_tabs .buttons {
-	width: 120px;
-	height: 90px;
-
-	line-height: 90px;
-    display: inline-block;
-	position: relative;
-	margin: 0 3px;
-
-    text-align: center;
-
-    -moz-border-radius: 12px;
-    -webkit-border-radius: 12px;
-    border-radius: 12px;
-
-    cursor: pointer;
-    opacity: 0.4;
-
-    background: #05addc;
-    background: -moz-linear-gradient(top,  #05addc 0%, #0099b7 25%, #008ca8 50%, #0099b7 75%, #05addc 100%);
-    background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#05addc), color-stop(25%,#0099b7), color-stop(50%,#008ca8), color-stop(75%,#0099b7), color-stop(100%,#05addc));
-    background: -webkit-linear-gradient(top,  #05addc 0%,#0099b7 25%,#008ca8 50%,#0099b7 75%,#05addc 100%);
-    background: -o-linear-gradient(top,  #05addc 0%,#0099b7 25%,#008ca8 50%,#0099b7 75%,#05addc 100%);
-    background: -ms-linear-gradient(top,  #05addc 0%,#0099b7 25%,#008ca8 50%,#0099b7 75%,#05addc 100%);
-    background: linear-gradient(to bottom,  #05addc 0%,#0099b7 25%,#008ca8 50%,#0099b7 75%,#05addc 100%);
-    filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#05addc', endColorstr='#05addc',GradientType=0 );
-
-}
-
-.inline_popup.userportal_device .media_tabs .buttons:hover {
-    -moz-box-shadow: 3px 5px 10px #383838;
-    -webkit-box-shadow: 3px 5px 10px #383838;
-    box-shadow: 3px 5px 10px #383838;
-}
-
-.inline_popup.userportal_device .media_tabs .buttons.current, .media_tabs .buttons.current:hover {
-    -moz-box-shadow: 3px 5px 10px #383838;
-    -webkit-box-shadow: 3px 5px 10px #383838;
-    box-shadow: 3px 5px 10px #383838;
-    opacity: 1;
-}
-
-.inline_popup.userportal_device .media_tabs .buttons .label_device {
-    font-size: 12px;
-    text-transform: uppercase;
-    font-weight: bold;
-    color: white;
-}
-
-.portal-view .sorting_asc, .portal-view .sorting_desc, .portal-view .sorting {
-    background: #222;
-}
-

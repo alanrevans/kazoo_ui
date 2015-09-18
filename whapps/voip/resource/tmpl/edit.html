@@ -68,6 +68,12 @@
                             <input class="span4" id="gateways_password" name="gateways[0].password" type="password" placeholder="Password" value="${data.gateways[0].password}" rel="popover" data-content="The authentication password used if challenged by the server"/>
                         </div>
                     </div>
+                    <div class="clearfix">
+                        <label for="gateways_interface">FS Interface:</label>
+                        <div class="input">
+                            <input class="span4" id="gateways_interface" name="gateways[0].custom_sip_interface" type="text" placeholder="Interface" value="${data.gateways[0].custom_sip_interface}" rel="popover" data-content="The SIP Interface (profile name) to be used by Freeswitch"/>
+                        </div>
+                    </div>
 
                     <div class="clearfix priority_wrapper">
                         <label for="weight_cost">Priority:</label>
@@ -151,6 +157,23 @@
                         <label for="gateways_progress_timeout">Progress Timeout</label>
                         <div class="input">
                             <input type="text" name="gateways[0].progress_timeout" id="gateways_progress_timeout" value="${data.gateways[0].progress_timeout}" rel="popover" data-content="In secs, the maximum time to wait for media from a carrier gateway"/>
+                        </div>
+                    </div>
+
+                    <div class="clearfix">
+                        <div class="input">
+                            <ul class="inputs-list">
+                                <li>
+                                    <label>
+                                        {{if data.peer === true}}
+                                            <input type="checkbox" id="peer" name="peer" checked="checked" rel="popover" data-content=""/>
+                                        {{else}}
+                                            <input type="checkbox" id="peer" name="peer" rel="popover" data-content=""/>
+                                        {{/if}}
+                                        <span>Peer</span>
+                                    </label>
+                                </li>
+                            </ul>
                         </div>
                     </div>
                 </div>

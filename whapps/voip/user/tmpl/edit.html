@@ -15,11 +15,12 @@
 	<div class="row">
 		<ul class="tabs" data-tabs="tabs">
 		 	<li class="active"><a href="#basic">Basic</a></li>
-		 	<li><a href="#caller_id"><span class="icon sip"></span>Caller ID</a></li>
-		 	<li><a href="#options"><span class="icon conference"></span>Options</a></li>
-		 	<li><a href="#call_forward"><span class="icon cdr"></span>Call Forward</a></li>
-		 	<li><a href="#password_management"><span class="icon sip"></span>Password Management</a></li>
-		 	<li><a href="#hot_desking"><span class="icon phone"></span>Hot Desking</a></li>
+		 	<li><a href="#caller_id">Caller ID</a></li>
+		 	<li><a href="#options">Options</a></li>
+		 	<li><a href="#call_forward">Call Forward</a></li>
+		 	<li><a href="#password_management">Password Management</a></li>
+		 	<li><a href="#hot_desking">Hot Desking</a></li>
+            <li><a href="#restrictions">Restrictions</a></li>
 		</ul>
 		<form id="user-form" action="#" method="post">
 			<div class="pill-content">
@@ -79,7 +80,7 @@
 							<ul class="inputs-list">
               					<li>
 	              					<label>
-	              						<span rel="popover" data-content="By checking this option, an email will be sent to the specified e-mail address each time a device of this account unregisters.">
+	              						<span rel="popover" data-content="By checking this option, an email will be sent to the specified e-mail address each time this user gets a voicemail.">
 											{{if data.vm_to_email_enabled}}
 			                                <input id="vm_to_email_enabled" type="checkbox" name="vm_to_email_enabled" checked="checked" />
 			                                {{else}}
@@ -118,7 +119,7 @@
 					<div class="clearfix">
 						<label for="caller_id_number_internal">Caller ID Number</label>
 						<div class="input">
-							<input class="span4" id="caller_id_number_internal" name="caller_id.internal.number" type="text" placeholder="555-555-5555" value="${data.caller_id.internal.number}" rel="popover" data-content="Define the Caller ID Number of this User for In-House Calls. If the Caller ID Number of the device and of the user is not set, this Caller ID Number will be used."/>
+							<input class="span4" id="caller_id_number_internal" name="caller_id.internal.number" type="text" placeholder="+1555-555-5555" value="${data.caller_id.internal.number}" rel="popover" data-content="Define the Caller ID Number of this User for In-House Calls. If the Caller ID Number of the device and of the user is not set, this Caller ID Number will be used."/>
 						</div>
 					</div>
 					<hr />
@@ -134,7 +135,7 @@
 					<div class="clearfix">
 						<label for="caller_id_number_external">Caller ID Number</label>
 						<div class="input">
-							<input class="span4" id="caller_id_number_external" name="caller_id.external.number" type="text" placeholder="555-555-5555" value="${data.caller_id.external.number}" rel="popover" data-content="Define the Caller ID Number of this User for Outbound Calls. If the Caller ID Number of the device and of the user is not set, this Caller ID Number will be used."/>
+							<input class="span4" id="caller_id_number_external" name="caller_id.external.number" type="text" placeholder="+1555-555-5555" value="${data.caller_id.external.number}" rel="popover" data-content="Define the Caller ID Number of this User for Outbound Calls. If the Caller ID Number of the device and of the user is not set, this Caller ID Number will be used."/>
 						</div>
 					</div>
 
@@ -166,54 +167,55 @@
 	            <div id="caller_id">
 					<h3>In-House Calls</h3>
 					<div class="clearfix">
-						<label for="caller_id_name_internal">Caller ID Name</label>
+						<label for="advanced_caller_id_name_internal">Caller ID Name</label>
 						<div class="input">
-							<input class="span4" id="caller_id_name_internal" name="caller_id.internal.name" type="text" placeholder="Name" value="${data.caller_id.internal.name}"  rel="popover" data-content="Define the Caller ID Name of this User for In-House Calls. If the Caller ID Name of the device and of the user is not set, this Caller ID Name will be used." />
+							<input class="span4" id="advanced_caller_id_name_internal" name="caller_id.internal.name" type="text" placeholder="Name" value="${data.caller_id.internal.name}"  rel="popover" data-content="Define the Caller ID Name of this User for In-House Calls. If the Caller ID Name of the device and of the user is not set, this Caller ID Name will be used." />
 						</div>
 					</div>
 
 					<div class="clearfix">
-						<label for="caller_id_number_internal">Caller ID Number</label>
+						<label for="advanced_caller_id_number_internal">Caller ID Number</label>
 						<div class="input">
-							<input class="span4" id="caller_id_number_internal" name="caller_id.internal.number" type="text" placeholder="555-555-5555" value="${data.caller_id.internal.number}" rel="popover" data-content="Define the Caller ID Number of this User for In-House Calls. If the Caller ID Number of the device and of the user is not set, this Caller ID Number will be used."/>
+							<input class="span4" id="advanced_caller_id_number_internal" name="caller_id.internal.number" type="text" placeholder="+1555-555-5555" value="${data.caller_id.internal.number}" rel="popover" data-content="Define the Caller ID Number of this User for In-House Calls. If the Caller ID Number of the device and of the user is not set, this Caller ID Number will be used."/>
 						</div>
 					</div>
 					<hr />
 
 					<h3>Outbound Calls</h3>
 					<div class="clearfix">
-						<label for="caller_id_name_external">Caller ID Name</label>
+						<label for="advanced_caller_id_name_external">Caller ID Name</label>
 						<div class="input">
-							<input class="span4" id="caller_id_name_external" name="caller_id.external.name" type="text" placeholder="Name" value="${data.caller_id.external.name}" rel="popover" data-content="Define the Caller ID Name of this User for Outbound Calls. If the Caller ID Name of the device and of the user is not set, this Caller ID Name will be used." />
+							<input class="span4" id="advanced_caller_id_name_external" name="caller_id.external.name" type="text" placeholder="Name" value="${data.caller_id.external.name}" rel="popover" data-content="Define the Caller ID Name of this User for Outbound Calls. If the Caller ID Name of the device and of the user is not set, this Caller ID Name will be used." />
 						</div>
 					</div>
 
 					<div class="clearfix">
-						<label for="caller_id_number_external">Caller ID Number</label>
+						<label for="advanced_caller_id_number_external">Caller ID Number</label>
 						<div class="input">
-							<input class="span4" id="caller_id_number_external" name="caller_id.external.number" type="text" placeholder="555-555-5555" value="${data.caller_id.external.number}" rel="popover" data-content="Define the Caller ID Number of this User for Outbound Calls. If the Caller ID Number of the device and of the user is not set, this Caller ID Number will be used."/>
+							<input class="span4" id="advanced_caller_id_number_external" name="caller_id.external.number" type="text" placeholder="+1555-555-5555" value="${data.caller_id.external.number}" rel="popover" data-content="Define the Caller ID Number of this User for Outbound Calls. If the Caller ID Number of the device and of the user is not set, this Caller ID Number will be used."/>
 						</div>
 					</div>
 					<hr />
 
 					<h3>Emergency</h3>
 					<div class="clearfix">
-						<label for="caller_id_name_emergency">Caller ID Name</label>
+						<label for="advanced_caller_id_name_emergency">Caller ID Name</label>
 						<div class="input">
-							<input class="span4" id="caller_id_name_emergency" name="caller_id.emergency.name" type="text" placeholder="Name" value="${data.caller_id.emergency.name}" rel="popover" data-content="Define the Caller ID Name of this User for Emergency Calls." />
+							<input class="span4" id="advanced_caller_id_name_emergency" name="caller_id.emergency.name" type="text" placeholder="Name" value="${data.caller_id.emergency.name}" rel="popover" data-content="Define the Caller ID Name of this User for Emergency Calls." />
 						</div>
 					</div>
 
 					<div class="clearfix">
-						<label for="caller_id_number_emergency">Caller ID Number</label>
+						<label for="advanced_caller_id_number_emergency">Caller ID Number</label>
 						<div class="input">
-							<input class="span4" id="caller_id_number_emergency" name="caller_id.emergency.number" type="text" placeholder="555-555-5555" value="${data.caller_id.emergency.number}" rel="popover" data-content="Define the Caller ID Number of this User for Emergency Calls."/>
+							<input class="span4" id="advanced_caller_id_number_emergency" name="caller_id.emergency.number" type="text" placeholder="+1555-555-5555" value="${data.caller_id.emergency.number}" rel="popover" data-content="Define the Caller ID Number of this User for Emergency Calls."/>
 						</div>
 					</div>
 	            </div>
 
 	            <div id="options">
                     <h3>Standard Options</h3>
+
 	            	<div class="clearfix">
 						<div class="input">
 							<ul class="inputs-list">
@@ -261,10 +263,29 @@
 							</span>
 						</div>
 					</div>
+
+                    <div class="clearfix">
+                        <div class="input">
+                           <ul class="inputs-list">
+                               <li>
+                                    <label>
+                                        <span rel="popover" data-content="By checking this box, this endpoint will not be added automatically to the contact list of the devices of this platform">
+                                            {{if data.contact_list.exclude === true}}
+                                            <input id="contact_list_exclude" type="checkbox" name="contact_list.exclude" checked="checked" />
+                                            {{else}}
+                                            <input id="contact_list_exclude" type="checkbox" name="contact_list.exclude" />
+                                            {{/if}}
+                                            <span>Hide from Contact List</span>
+                                        </span>
+                                    </label>
+                                </li>
+                            </ul>
+                       </div>
+                    </div>
                     <hr/>
                     <h3>Queue Options</h3>
 
-					<div class="clearfix">
+					<!--<div class="clearfix">
 						<div class="input">
 							<ul class="inputs-list">
               					<li>
@@ -281,33 +302,32 @@
                                 </li>
                             </ul>
 						</div>
-					</div>
+					</div>-->
 
-                    <div class="queue_block">
+                    <!--<div class="queue_block">
                         <div class="clearfix queue_pin">
                             <label for="queue_pin">PIN</label>
                             <div class="input">
                                 <input id="queue_pin" placeholder="3615" type="text" name="queue_pin" value="${data.queue_pin}" rel="popover" data-content="PIN used by the agent to login to a queue."/>
                             </div>
                         </div>
-
-                        <div class="clearfix">
-                            <div class="input">
-                                <ul class="inputs-list">
-                                    <li>
-                                        <label>
-                                            <span rel="popover" data-content="By checking this box, this agent will be recorded even if the global setting for the queue is set to not record agents.">
-                                                {{if data.record_call === true}}
-                                                <input id="record_call" type="checkbox" name="record_call" checked="checked" />
-                                                {{else}}
-                                                <input id="record_call" type="checkbox" name="record_call"/>
-                                                {{/if}}
-                                                <span>Record this agent(user)</span>
-                                            </span>
-                                        </label>
-                                    </li>
-                                </ul>
-                            </div>
+-->
+                    <div class="clearfix">
+                        <div class="input">
+                            <ul class="inputs-list">
+                                <li>
+                                    <label>
+                                        <span rel="popover" data-content="By checking this box, this agent will be recorded even if the global setting for the queue is set to not record agents.">
+                                            {{if data.record_call === true}}
+                                            <input id="record_call" type="checkbox" name="record_call" checked="checked" />
+                                            {{else}}
+                                            <input id="record_call" type="checkbox" name="record_call"/>
+                                            {{/if}}
+                                            <span>Record this agent(user)</span>
+                                        </span>
+                                    </label>
+                                </li>
+                            </ul>
                         </div>
                     </div>
 	            </div>
@@ -439,10 +459,10 @@
 	            				<li>
 	            					<label>
 	            						<span rel="popover" data-content="Check to enable Hot Desking">
-		            						{{if data.hotdesk.enable}}
-		            		                    <input type="checkbox" id="hotdesk_enable" name="hotdesk.enable" checked="checked" />
+		            						{{if data.hotdesk.enabled}}
+		            		                    <input type="checkbox" id="hotdesk_enabled" name="hotdesk.enabled" checked="checked" />
 		            		                {{else}}
-		            		                    <input type="checkbox" id="hotdesk_enable" name="hotdesk.enable"/>
+		            		                    <input type="checkbox" id="hotdesk_enabled" name="hotdesk.enabled"/>
 		            		                {{/if}}
 		            		                <span>Enable Hot Desking</span>
 	            		                </span>
@@ -504,7 +524,73 @@
 	            		</div>
 	            	</div>
 
+                    {{if field_data.hotdesk_enabled}}
+                        <hr/>
+
+                        <h3>Devices where this user is currently logged in</h3>
+
+                        <!--<div class="help_box">In order to actually log out from the devices listed below, you need to tick the checkbox on the right of the device and then press the Save button!</div>-->
+
+                        <div id="hotdesk_devices" class="small-table">
+                            <div class="row title">
+                                <div class="column">Devices&nbsp;&nbsp;<span class="icon medium device"/></div>
+                                <!--<div class="column">Log out</div>-->
+                            </div>
+                            <div class="rows">
+                                {{if field_data.device_list}}
+                                    {{each(k, v) field_data.device_list}}
+                                        <div class="row" id="row_hotdesk_${k}" data-id="${k}">
+                                            <div class="column">${field_data.device_list[k].name}</div>
+<!--                                            <div class="column"><input type="checkbox" name="hotdesk.log_out[]" value="${k}"></input></a></div>-->
+                                        </div>
+                                    {{/each}}
+                                {{else}}
+                                    <div class="row" id="row_no_data">
+                                        <div class="column merged">This user is not logged in to any other endpoints.</div>
+                                    </div>
+                                {{/if}}
+                            </div>
+                        </div>
+                    {{/if}}
 	            </div>
+
+                <div id="restrictions">
+                    <div class="clearfix">
+                        <div class="input">
+                            <ul class="inputs-list">
+                                <li>
+                                    <label>
+                                        <span rel="popover" data-content="If checked the user will only be able to call the Users in his groups.">
+                                            {{if data.call_restriction.closed_groups.action === 'deny'}}
+                                                <input type="checkbox" name="extra.closed_groups" checked="checked"/>
+                                            {{else}}
+                                                <input type="checkbox" name="extra.closed_groups"/>
+                                            {{/if}}
+                                            <span>Closed Groups</span>
+                                        </span>
+                                    </label>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    {{each(k, v) field_data.call_restriction}}
+                    <div class="clearfix">
+						<label>${v.friendly_name}</label>
+						<div class="input">
+							 <select name="call_restriction.${k}.action" class="medium" rel="popover">
+                                {{if data.call_restriction[k].action === 'deny'}}
+                                    <option value="deny" selected>Deny</option>
+                                    <option value="inherit">Inherit</option>
+                                {{else}}
+                                    <option value="deny">Deny</option>
+                                    <option value="inherit" selected>Inherit</option>
+                                {{/if}}
+                            </select>
+						</div>
+					</div>
+                    {{/each}}
+                </div>
 			</div>
 		</form>
 		<div class="buttons-right">

@@ -8,22 +8,24 @@ winkstart.module('call_center', 'queue', {
             edit: 'tmpl/edit.html',
             queue_callflow: 'tmpl/queue_callflow.html',
             agent_pause_callflow: 'tmpl/agent_pause_callflow.html',
+            agent_presence_callflow: 'tmpl/agent_presence_callflow.html',
             add_agents: 'tmpl/add_agents.html',
             edit_agents: 'tmpl/edit_agents.html',
             selected_agent: 'tmpl/selected_agent.html',
-            available_user: 'tmpl/available_user.html'
+            available_user: 'tmpl/available_user.html',
+            account_fields: 'tmpl/account_fields.html'
         },
 
         subscribe: {
             'queue.activate': 'activate',
             'queue.edit': 'edit_queue',
             'callflow.define_callflow_nodes': 'define_callflow_nodes',
-            'queue.popup_edit': 'popup_edit_queue'
+            'queue.popup_edit': 'popup_edit_queue',
+            'call_center.render_account_fields': 'render_account_fields'
         },
 
         validation: [
             { name: '#name', regex: /.+/ }
-            /*{ name: '#caller_exit_key',  regex: /^.{1}/ }*/
         ],
 
         resources: {
@@ -63,7 +65,12 @@ winkstart.module('call_center', 'queue', {
                 verb: 'DELETE'
             },
             'queue.user_list': {
-                url: '{api_url}/accounts/{account_id}/agents',
+                url: '{api_url}/accounts/{account_id}/users',
+                contentType: 'application/json',
+                verb: 'GET'
+            },
+            'queue.media_list': {
+                url: '{api_url}/accounts/{account_id}/media',
                 contentType: 'application/json',
                 verb: 'GET'
             }
@@ -249,10 +256,12 @@ winkstart.module('call_center', 'queue', {
                 },
                 defaults = {
                     data: $.extend(true, {
-                        connection_timeout: '3600',
+                        connection_timeout: '0',
                         member_timeout: '5',
                         agent_wrapup_time: '30',
                         record_caller: true,
+                        moh: {},
+                        notifications: {},
                         max_queue_size: '0'
                     }, data_defaults || {}),
                     field_data: {
@@ -263,48 +272,68 @@ winkstart.module('call_center', 'queue', {
                     }
                 };
 
-            winkstart.request(true, 'queue.user_list', {
+            winkstart.request(true, 'queue.media_list', {
                     account_id: winkstart.apps['call_center'].account_id,
                     api_url: winkstart.apps['call_center'].api_url
                 },
-                function(_data, status) {
-                    //defaults.field_data.users = _data.data;
-                    defaults.field_data.users = {};
-
-                    $.each(_data.data, function(k, v) {
-                        defaults.field_data.users[v.id] = v;
-                    });
-
-                    if(typeof data == 'object' && data.id) {
-                        THIS.queue_get_stats(data.id, function(_data_stat) {
-                            winkstart.request(true, 'queue.get', {
-                                    account_id: winkstart.apps['call_center'].account_id,
-                                    api_url: winkstart.apps['call_center'].api_url,
-                                    queue_id: data.id
-                                },
-                                function(_data, status) {
-                                    var render_data = $.extend(true, defaults, _data);
-                                    render_data.field_data.old_list = [];
-                                    render_data.stats = _data_stat.data;
-                                    if('agents' in _data.data) {
-                                        render_data.field_data.old_list = _data.data.agents;
-                                    }
-                                    THIS.render_edit_agents(render_data, target, callbacks);
-
-                                    if(typeof callbacks.after_render == 'function') {
-                                        callbacks.after_render();
-                                    }
-                                }
-                            );
-                        });
-                    }
-                    else {
-                        THIS.render_queue(defaults, target, callbacks);
-
-                        if(typeof callbacks.after_render == 'function') {
-                            callbacks.after_render();
+                function(_data_media, status) {
+                    _data_media.data.unshift(
+                        {
+                            id: '',
+                            name: 'Default Music'
+                        },
+                        {
+                            id: 'silence_stream://300000',
+                            name: 'Silence'
                         }
-                    }
+                    );
+
+                    defaults.field_data.media = _data_media.data;
+
+                    winkstart.request(true, 'queue.user_list', {
+                            account_id: winkstart.apps['call_center'].account_id,
+                            api_url: winkstart.apps['call_center'].api_url
+                        },
+                        function(_data, status) {
+                            //defaults.field_data.users = _data.data;
+                            defaults.field_data.users = {};
+
+                            $.each(_data.data, function(k, v) {
+                                defaults.field_data.users[v.id] = v;
+                            });
+
+                            if(typeof data == 'object' && data.id) {
+                                //THIS.queue_get_stats(data.id, function(_data_stat) {
+                                    winkstart.request(true, 'queue.get', {
+                                            account_id: winkstart.apps['call_center'].account_id,
+                                            api_url: winkstart.apps['call_center'].api_url,
+                                            queue_id: data.id
+                                        },
+                                        function(_data, status) {
+                                            var render_data = $.extend(true, defaults, _data);
+                                            render_data.field_data.old_list = [];
+                                            render_data.stats = {};// _data_stat.data;
+                                            if('agents' in _data.data) {
+                                                render_data.field_data.old_list = _data.data.agents;
+                                            }
+                                            THIS.render_edit_agents(render_data, target, callbacks);
+
+                                            if(typeof callbacks.after_render == 'function') {
+                                                callbacks.after_render();
+                                            }
+                                        }
+                                    );
+                                //});
+                            }
+                            else {
+                                THIS.render_queue(defaults, target, callbacks);
+
+                                if(typeof callbacks.after_render == 'function') {
+                                    callbacks.after_render();
+                                }
+                            }
+                        }
+                    );
                 }
             );
         },
@@ -332,15 +361,31 @@ winkstart.module('call_center', 'queue', {
             }
         },
 
+		render_account_fields: function(parent, data, callback) {
+			var THIS = this,
+				fields_html = THIS.templates.account_fields.tmpl(data);
+
+			$('*[rel=popover]', fields_html).popover({
+                trigger: 'focus'
+            });
+
+            $('*[rel=popover]:not([type="text"])', fields_html).popover({
+                trigger: 'hover'
+            });
+
+			parent.find('#options').append(fields_html);
+
+			callback && callback();
+
+			return false;
+		},
+
         render_edit_agents: function(data, target, callbacks) {
-            console.log('render_edit_agents');
             var THIS = this,
                 agents_html = THIS.templates.edit_agents.tmpl(data);
 
             THIS.render_reports(data, agents_html);
-            console.log('reports done');
             THIS.render_user_list(data, agents_html);
-            console.log('users done');
 
             $('.detail_queue', agents_html).click(function() {
                 THIS.popup_edit_queue(data, callbacks);
@@ -370,6 +415,43 @@ winkstart.module('call_center', 'queue', {
             });
 
             winkstart.tabs($('.view-buttons', queue_html), $('.tabs', queue_html));
+
+            if(!$('#moh', queue_html).val()) {
+                $('#edit_link_media', queue_html).hide();
+            }
+
+            $('#moh', queue_html).change(function() {
+                !$('#moh option:selected', queue_html).val() ? $('#edit_link_media', queue_html).hide() : $('#edit_link_media', queue_html).show();
+            });
+
+            $('.inline_action_media', queue_html).click(function(ev) {
+                var _data = ($(this).dataset('action') == 'edit') ? { id: $('#moh', queue_html).val() } : {},
+                    _id = _data.id;
+
+                ev.preventDefault();
+
+                winkstart.publish('media.popup_edit', _data, function(_data) {
+                    /* Create */
+                    if(!_id) {
+                        $('#moh', queue_html).append('<option id="'+ _data.data.id  +'" value="'+ _data.data.id +'">'+ _data.data.name +'</option>')
+                        $('#moh', queue_html).val(_data.data.id);
+
+                        $('#edit_link_media', queue_html).show();
+                    }
+                    else {
+                        /* Update */
+                        if('id' in _data.data) {
+                            $('#moh #'+_data.data.id, queue_html).text(_data.data.name);
+                        }
+                        /* Delete */
+                        else {
+                            $('#moh #'+_id, queue_html).remove();
+                            $('#edit_link_media', queue_html).hide();
+                        }
+                    }
+                });
+            });
+
 
             $('.queue-save', queue_html).click(function(ev) {
                 ev.preventDefault();
@@ -475,14 +557,11 @@ winkstart.module('call_center', 'queue', {
 
             THIS.setup_reports(parent);
 
-            console.log(data);
             if(data.stats) {
                 $.each(data.stats, function(k, v) {
                     if(v.calls) {
                         $.each(v.calls, function(k2, v2) {
-                            console.log(v2);
                             if(v2.duration && v2.wait_time && v2.agent_id) {
-                                console.log(data);
                                 if(v2.agent_id in data.field_data.users) {
                                     tab_data.push([k2, winkstart.friendly_seconds(v2.duration), data.field_data.users[v2.agent_id].first_name + ' ' + data.field_data.users[v2.agent_id].last_name, v.recorded_at]);
                                 }
@@ -856,7 +935,7 @@ winkstart.module('call_center', 'queue', {
                     icon: 'queue',
                     category: 'Call-Center',
                     module: 'acdc_member',
-                    tip: 'Ask the caller to input the first letters of the name of the person that he wants to reach.',
+                    tip: 'Direct a Caller to a Queue.',
                     data: {
                         id: 'null'
                     },
@@ -868,9 +947,14 @@ winkstart.module('call_center', 'queue', {
                     ],
                     isUsable: 'true',
                     caption: function(node, caption_map) {
-                        var id = node.getMetadata('id');
+                        var id = node.getMetadata('id'),
+                            returned_value = '';
 
-                        return (id) ? caption_map[id].name : '';
+                        if(id in caption_map) {
+                            returned_value = caption_map[id].name;
+                        }
+
+                        return returned_value;
                     },
                     edit: function(node, callback) {
                         var _this = this;
@@ -946,9 +1030,14 @@ winkstart.module('call_center', 'queue', {
                     ],
                     isUsable: 'true',
                     caption: function(node, caption_map) {
-                        var id = node.getMetadata('id');
+                        var id = node.getMetadata('id'),
+                            returned_value = '';
 
-                        return (id) ? caption_map[id].name : '';
+                        if(id in caption_map) {
+                            returned_value = caption_map[id].name;
+                        }
+
+                        return returned_value;
                     },
                     edit: function(node, callback) {
                         var _this = this;
@@ -1024,9 +1113,14 @@ winkstart.module('call_center', 'queue', {
                     ],
                     isUsable: 'true',
                     caption: function(node, caption_map) {
-                        var id = node.getMetadata('id');
+                        var id = node.getMetadata('id'),
+                            returned_value = '';
 
-                        return (id) ? caption_map[id].name : '';
+                        if(id in caption_map) {
+                            returned_value = caption_map[id].name;
+                        }
+
+                        return returned_value;
                     },
                     edit: function(node, callback) {
                         var _this = this;
@@ -1084,31 +1178,6 @@ winkstart.module('call_center', 'queue', {
                         );
                     }
                 },
-                'acdc_agent[action=resume]': {
-                    name: 'Agent Resume',
-                    icon: 'rightarrow',
-                    category: 'Call-Center',
-                    module: 'acdc_agent',
-                    tip: '',
-                    data: {
-                        action: 'resume'
-                    },
-                    rules: [
-                        {
-                            type: 'quantity',
-                            maxSize: '1'
-                        }
-                    ],
-                    isUsable: 'true',
-                    caption: function(node, caption_map) {
-                        return '';
-                    },
-                    edit: function(node, callback) {
-                        if(typeof callback == 'function') {
-                            callback();
-                        }
-                    }
-                },
                 'acdc_agent[action=pause]': {
                     name: 'Agent Pause',
                     icon: 'rightarrow',
@@ -1117,7 +1186,8 @@ winkstart.module('call_center', 'queue', {
                     tip: '',
                     data: {
                         action: 'pause',
-                        timeout: '900'
+                        timeout: '900',
+                        presence_id: ''
                     },
                     rules: [
                         {
@@ -1135,22 +1205,84 @@ winkstart.module('call_center', 'queue', {
                         var popup, popup_html;
 
                         popup_html = THIS.templates.agent_pause_callflow.tmpl({
-                            data_logout: {
+                            data_agent: {
                                 'timeout': node.getMetadata('timeout') || '900',
+                                'presence_id': node.getMetadata('presence_id')
                             }
                         });
 
                         $('#add', popup_html).click(function() {
-                            var timeout = $('#timeout', popup_html).val();
+                            var timeout = parseInt($('#timeout', popup_html).val()),
+                            	presence_id = $('#presence_id', popup_html).val();
 
-                            node.setMetadata('timeout', timeout);
-                            node.caption = timeout + ' seconds';
+                            if(timeout > 0) {
+                                node.setMetadata('timeout', timeout);
+                                node.setMetadata('presence_id', presence_id);
+
+                                node.caption = timeout + ' seconds';
+
+                                popup.dialog('close');
+                            }
+                            else {
+                                winkstart.alert('Please enter a valid number of seconds. It needs to be greater than 0.');
+                            }
+                        });
+
+                        popup = winkstart.dialog(popup_html, {
+                            title: 'Pause Agent',
+                            minHeight: '0',
+                            beforeClose: function() {
+                                if(typeof callback == 'function') {
+                                     callback();
+                                }
+                            }
+                        });
+
+                        if(typeof callback == 'function') {
+                            callback();
+                        }
+                    }
+                },
+                'acdc_agent[action=resume]': {
+                    name: 'Agent Resume',
+                    icon: 'rightarrow',
+                    category: 'Call-Center',
+                    module: 'acdc_agent',
+                    tip: '',
+                    data: {
+                        action: 'resume',
+                        presence_id: ''
+                    },
+                    rules: [
+                        {
+                            type: 'quantity',
+                            maxSize: '1'
+                        }
+                    ],
+                    isUsable: 'true',
+                    caption: function(node, caption_map) {
+                        return '';
+                    },
+                    edit: function(node, callback) {
+                    	var popup, popup_html;
+
+                        popup_html = THIS.templates.agent_presence_callflow.tmpl({
+                            data_agent: {
+                            	'action': 'Resume',
+                                'presence_id': node.getMetadata('presence_id')
+                            }
+                        });
+
+                        $('#add', popup_html).click(function() {
+                            var presence_id = $('#presence_id', popup_html).val();
+
+                            node.setMetadata('presence_id', presence_id);
 
                             popup.dialog('close');
                         });
 
                         popup = winkstart.dialog(popup_html, {
-                            title: 'Pause Agent',
+                            title: 'Agent Resume',
                             minHeight: '0',
                             beforeClose: function() {
                                 if(typeof callback == 'function') {
@@ -1171,7 +1303,8 @@ winkstart.module('call_center', 'queue', {
                     module: 'acdc_agent',
                     tip: '',
                     data: {
-                        action: 'logout'
+                        action: 'logout',
+                        presence_id: ''
                     },
                     rules: [
                         {
@@ -1184,6 +1317,33 @@ winkstart.module('call_center', 'queue', {
                         return '';
                     },
                     edit: function(node, callback) {
+                    	var popup, popup_html;
+
+                        popup_html = THIS.templates.agent_presence_callflow.tmpl({
+                            data_agent: {
+                            	'action': 'Logout',
+                                'presence_id': node.getMetadata('presence_id')
+                            }
+                        });
+
+                        $('#add', popup_html).click(function() {
+                            var presence_id = $('#presence_id', popup_html).val();
+
+                            node.setMetadata('presence_id', presence_id);
+
+                            popup.dialog('close');
+                        });
+
+                        popup = winkstart.dialog(popup_html, {
+                            title: 'Logout Agent',
+                            minHeight: '0',
+                            beforeClose: function() {
+                                if(typeof callback == 'function') {
+                                     callback();
+                                }
+                            }
+                        });
+
                         if(typeof callback == 'function') {
                             callback();
                         }
@@ -1196,7 +1356,8 @@ winkstart.module('call_center', 'queue', {
                     module: 'acdc_agent',
                     tip: '',
                     data: {
-                        action: 'login'
+                        action: 'login',
+                        presence_id: ''
                     },
                     rules: [
                         {
@@ -1209,6 +1370,33 @@ winkstart.module('call_center', 'queue', {
                         return '';
                     },
                     edit: function(node, callback) {
+						var popup, popup_html;
+
+                        popup_html = THIS.templates.agent_presence_callflow.tmpl({
+                            data_agent: {
+                            	'action': 'Login',
+                                'presence_id': node.getMetadata('presence_id')
+                            }
+                        });
+
+                        $('#add', popup_html).click(function() {
+                            var presence_id = $('#presence_id', popup_html).val();
+
+                            node.setMetadata('presence_id', presence_id);
+
+                            popup.dialog('close');
+                        });
+
+                        popup = winkstart.dialog(popup_html, {
+                            title: 'Login Agent',
+                            minHeight: '0',
+                            beforeClose: function() {
+                                if(typeof callback == 'function') {
+                                     callback();
+                                }
+                            }
+                        });
+
                         if(typeof callback == 'function') {
                             callback();
                         }

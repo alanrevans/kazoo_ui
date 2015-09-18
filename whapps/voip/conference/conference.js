@@ -183,44 +183,57 @@ winkstart.module('voip', 'conference', {
                     }
                 };
 
-            winkstart.request(true, 'user.list', {
-                    account_id: winkstart.apps['voip'].account_id,
-                    api_url: winkstart.apps['voip'].api_url
-                },
-                function(_data, status) {
-                    _data.data.unshift({
-                        id: '',
-                        first_name: '- No',
-                        last_name: 'owner -'
-                    });
-
-                    defaults.field_data.users = _data.data;
-
-                    if(typeof data == 'object' && data.id) {
-                        winkstart.request(true, 'conference.get', {
+            winkstart.parallel({
+                    user_list: function(callback) {
+                        winkstart.request(true, 'user.list', {
                                 account_id: winkstart.apps['voip'].account_id,
-                                api_url: winkstart.apps['voip'].api_url,
-                                conference_id: data.id
+                                api_url: winkstart.apps['voip'].api_url
                             },
                             function(_data, status) {
-                                THIS.migrate_data(_data);
+                                _data.data.unshift({
+                                    id: '',
+                                    first_name: '- No',
+                                    last_name: 'owner -'
+                                });
 
-                                THIS.format_data(_data);
+                                defaults.field_data.users = _data.data;
 
-                                THIS.render_conference($.extend(true, defaults, _data), target, callbacks);
-
-                                if(typeof callbacks.after_render == 'function') {
-                                    callbacks.after_render();
-                                }
+                                callback(null, _data);
                             }
                         );
-                    }
-                    else {
-                        THIS.render_conference(defaults, target, callbacks);
+                    },
+                    get_conference: function(callback) {
+                        if(typeof data == 'object' && data.id) {
+                            winkstart.request(true, 'conference.get', {
+                                    account_id: winkstart.apps['voip'].account_id,
+                                    api_url: winkstart.apps['voip'].api_url,
+                                    conference_id: data.id
+                                },
+                                function(_data, status) {
+                                    THIS.migrate_data(_data);
 
-                        if(typeof callbacks.after_render == 'function') {
-                            callbacks.after_render();
+                                    THIS.format_data(_data);
+
+                                    callback(null, _data);
+                                }
+                            );
                         }
+                        else {
+                            callback(null, {});
+                        }
+                    }
+                },
+                function(err, results) {
+                    var render_data = defaults;
+
+                    if(typeof data === 'object' && data.id) {
+                        render_data = $.extend(true, defaults, results.get_conference);
+                    }
+
+                    THIS.render_conference(render_data, target, callbacks);
+
+                    if(typeof callbacks.after_render == 'function') {
+                        callbacks.after_render();
                     }
                 }
             );
@@ -307,6 +320,8 @@ winkstart.module('voip', 'conference', {
                         var form_data = form2object('conference-form');
 
                         THIS.clean_form_data(form_data);
+
+                        data.data.member.pins = form_data.member.pins;
 
                         if('field_data' in data) {
                             delete data.field_data;
@@ -404,7 +419,6 @@ winkstart.module('voip', 'conference', {
 
         clean_form_data: function(form_data){
             var THIS = this;
-
             form_data.member.pins_string = THIS.letters_to_numbers(form_data.member.pins_string);
 
             form_data.member.pins = $.map(form_data.member.pins_string.split(','), function(val) {
@@ -534,9 +548,14 @@ winkstart.module('voip', 'conference', {
                     ],
                     isUsable: 'true',
                     caption: function(node, caption_map) {
-                        var id = node.getMetadata('id');
+                        var id = node.getMetadata('id'),
+                            returned_value = '';
 
-                        return (id && id != '') ? caption_map[id].name : '';
+                        if(id in caption_map) {
+                            returned_value = caption_map[id].name;
+                        }
+
+                        return returned_value;
                     },
                     edit: function(node, callback) {
                         var _this = this;

@@ -4,7 +4,7 @@ winkstart.module('myaccount', 'credits', {
         ],
 
         subscribe: {
-            'nav.activate': 'nav_activate'
+            'credits.activate': 'nav_activate'
         },
 
         templates: {
@@ -64,7 +64,7 @@ winkstart.module('myaccount', 'credits', {
                     user_id: winkstart.apps['myaccount'].user_id
                 },
                 function(_data, status) {
-                    if(!_data.data.priv_level || _data.data.priv_level === 'admin') {
+                    if(!('hide_credits' in winkstart.config && winkstart.config.hide_credits === true) && (!_data.data.priv_level || _data.data.priv_level === 'admin') ) {
                         winkstart.publish('statistics.add_stat', THIS.define_stats());
                     }
                 }

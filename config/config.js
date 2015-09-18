@@ -124,24 +124,24 @@
         device_threshold: [5, 20, 50, 100],
 
         /* web server used by the cdr module to show the link to the logs */
-        logs_web_server_url: 'http://cdrs.2600hz.com/',
+        logs_web_server_url: 'http://cdrs.kagesys.com/',
 
         /* Customized name displayed in the application (login page, resource module..) */
-        company_name: '2600hz',
+        company_name: 'Kage Systems',
 
         base_urls: {
-            'u.2600hz.com': {
+            'u.kagesys.com': {
                 /* If this was set to true, Winkstart would look for u_2600hz_com.png in config/images/logos */
                 custom_logo: false
             },
-            'apps.2600hz.com': {
+            'apps.kagesys.com': {
                 custom_logo: false
             }
         },
 
         /* Was winkstart.realm_suffix */
         realm_suffix: {
-            login: '.sip.2600hz.com',
+            login: '.kagesys.com',
             register: '.trial.2600hz.com'
         },
 
@@ -170,7 +170,7 @@
             learn_more: 'http://www.2600hz.com/'
         },
 
-        default_api_url: 'http://kazoo.kagesys.com:8000/v1',
+        default_api_url: 'https://kazoo.kagesys.com/v1',
 
         available_apps: {
             'voip': {
@@ -220,7 +220,7 @@
 
     winkstart.apps = {
         'auth' : {
-            api_url: 'http://kazoo.kagesys.com:8000/v1',
+            api_url: 'https://kazoo.kagesys.com/v1',
             /* These are some settings that are set automatically. You are free to override them here.
             account_id: null,
             auth_token: null,

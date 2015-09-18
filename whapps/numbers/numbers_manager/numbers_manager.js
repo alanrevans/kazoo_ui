@@ -298,7 +298,8 @@ winkstart.module('numbers', 'numbers_manager', {
                 number_data;
 
             if(numbers_data.length > 0) {
-                var phone_number = numbers_data[0].phone_number.match(/^\+?1?([2-9]\d{9})$/),
+                //var phone_number = numbers_data[0].phone_number.match(/^\+?1?([2-9]\d{9})$/),
+                var phone_number = numbers_data[0].phone_number.match(/^\+(.*)$/),
                     error_function = function() {
                         winkstart.confirm('There was an error when trying to acquire ' + numbers_data[0].phone_number +
                             ', would you like to retry?',
@@ -465,6 +466,41 @@ winkstart.module('numbers', 'numbers_manager', {
                 }
             });
 
+            $(numbers_manager_html).delegate('.cid_inbound', 'click', function() {
+                var $cnam_cell = $(this),
+                    data_phone_number = $cnam_cell.parents('tr').first().attr('id'),
+                    phone_number = data_phone_number.match(/^\+?1?([2-9]\d{9})$/);
+
+                if(phone_number[1]) {
+                    THIS.get_number(phone_number[1], function(_data) {
+                        if(typeof _data.data.cnam !== 'undefined' && _data.data.cnam.inbound_lookup) {
+                            _data.data.cnam.inbound_lookup = false;
+                            THIS.update_number(phone_number[1], _data.data, function(_data_update) {
+                                    $cnam_cell.removeClass('active').addClass('inactive');
+                                },
+                                function(_data_update) {
+                                    winkstart.alert('Failed to update the Caller-ID for this phone number<br/>Error: '+_data_update.message);
+                                }
+                            );
+                        }
+                        else {
+                            winkstart.confirm('If you turn on this feature, the Caller\'s Name will be included in your Caller ID information for everyone who dial this phone number. <br/><br/>Your on-file credit card will immediately be charged for any changes you make. If you have changed any recurring services, new charges will be pro-rated for your billing cycle.<br/><br/>Are you sure you want to continue?',
+                                function() {
+                                    _data.data.cnam = $.extend(true,_data.data.cnam || {},{ inbound_lookup: true });
+                                    THIS.update_number(phone_number[1], _data.data, function(_data_update) {
+                                            $cnam_cell.removeClass('inactive').addClass('active');
+                                        },
+                                        function(_data_update) {
+                                            winkstart.alert('Failed to update the Caller-ID for this phone number<br/>Error: '+_data_update.message);
+                                        }
+                                    );
+                                }
+                            );
+                        }
+                    });
+                }
+            });
+
             $(numbers_manager_html).delegate('.e911', 'click', function() {
                 var $e911_cell = $(this),
                     data_phone_number = $e911_cell.parents('tr').first().attr('id'),
@@ -509,7 +545,7 @@ winkstart.module('numbers', 'numbers_manager', {
                     winkstart.confirm('Are you sure you want to delete the '+nb_numbers+' number(s) selected?', function() {
                             $selected_checkboxes.each(function() {
                                 data_phone_number = $(this).parents('tr').attr('id'),
-                                phone_number = data_phone_number.match(/^\+?1?([2-9]\d{9})$/);
+                                phone_number = data_phone_number.match(/^(.*)$/);
 
                                 if(phone_number[1]) {
                                     THIS.delete_number(phone_number[1],
@@ -654,7 +690,8 @@ winkstart.module('numbers', 'numbers_manager', {
                 if(phone_numbers.length > 0) {
                     var phone_number;
                     $.each(phone_numbers, function(k, v) {
-                        phone_number = v.match(/^\+?1?([2-9]\d{9})$/);
+                        //phone_number = v.match(/^\+?1?([2-9]\d{9})$/);
+                        phone_number = v.match(/^\+(.*)$/);
                         if(phone_number && phone_number[1]) {
                             numbers_data.push({phone_number: v});
                         }
@@ -681,10 +718,25 @@ winkstart.module('numbers', 'numbers_manager', {
             $('.add', popup).focus();
         },
 
+		formatBuyNumberData: function(data) {
+			var arrayNumbers = [];
+
+			$.each(data.data, function(k, number) {
+				if(number.number) {
+					arrayNumbers.push(number.number);
+				}
+				else {
+					arrayNumbers.push(number);
+				}
+			});
+
+			return arrayNumbers;
+		},
+
         render_add_number_dialog: function(callback) {
             var THIS = this,
                 numbers_data = [],
-                popup_html = THIS.templates.add_number_dialog.tmpl(),
+                popup_html = THIS.templates.add_number_dialog.tmpl({ version: winkstart.config.default_api_url.match(/(v2)$/) ? true : false}),
                 popup;
 
             $('.toggle_div', popup_html).hide();
@@ -701,7 +753,8 @@ winkstart.module('numbers', 'numbers_manager', {
                 npa_data.prefix = npa + nxx;
 
                 THIS.search_numbers(npa_data, function(results_data) {
-                    var results_html = THIS.templates.add_number_search_results.tmpl(results_data);
+                    var formattedData = THIS.formatBuyNumberData(results_data),
+                        results_html = THIS.templates.add_number_search_results.tmpl({ data: formattedData });
 
                     $('#foundDIDList', popup_html)
                         .empty()
@@ -714,21 +767,17 @@ winkstart.module('numbers', 'numbers_manager', {
             $('#add_numbers_button', popup_html).click(function(ev) {
                 ev.preventDefault();
 
-                winkstart.confirm('Your on-file credit card will immediately be charged for any changes you make. If you have changed any recurring services, new charges will be pro-rated for your billing cycle.<br/><br/>Are you sure you want to continue?',
-                    function() {
-                        $('#foundDIDList .checkbox_number:checked', popup_html).each(function() {
-                            numbers_data.push($(this).dataset());
-                        });
+                $('#foundDIDList .checkbox_number:checked', popup_html).each(function() {
+                    numbers_data.push($(this).dataset());
+                });
 
-                        THIS.add_numbers(numbers_data, function() {
-                            if(typeof callback === 'function') {
-                                callback();
-                            }
-
-                            popup.dialog('close');
-                        });
+                THIS.add_numbers(numbers_data, function() {
+                    if(typeof callback === 'function') {
+                        callback();
                     }
-                );
+
+                    popup.dialog('close');
+                });
             });
 
             $(popup_html).delegate('.checkbox_number', 'click', function() {
@@ -951,6 +1000,10 @@ winkstart.module('numbers', 'numbers_manager', {
                 files ? port_form_data.files = files : string_alert += 'You need to upload a bill (Step 2) in order to submit a port request.<br/>';
                 loa ? port_form_data.loa = loa : string_alert += 'You need to upload a Letter of Authorization / Resporg form (Step 3) in order to submit a port request.<br/>';
 
+                if(!port_form_data.port.email.match(/^([0-9A-Za-z_\-\+\.]+@[0-9A-Za-z_\-\.]+\.[0-9A-Za-z]+)?$/)) {
+                    string_alert += 'The e-mail address you entered for notification doesn\'t have a valid format';
+                }
+
                 if(string_alert === '') {
                     delete port_form_data.extra;
 
@@ -994,13 +1047,15 @@ winkstart.module('numbers', 'numbers_manager', {
                     winkstart.table.numbers_manager.fnClearTable();
 
                     var tab_data = [];
-                    $.each(_data.data, function(k, v) {
-                        if(k != 'id') {
-                            v.cnam = $.inArray('cnam', v.features) >= 0 ? true : false;
-                            v.e911 = $.inArray('dash_e911', v.features) >= 0 ? true : false;
-                            tab_data.push(['', k, v.cnam, v.e911, v.state]);
-                        }
-                    });
+                    if('numbers' in _data.data) {
+                    	$.each(_data.data.numbers, function(k, v) {
+                        	var inbound = $.inArray('inbound_cnam', v.features) >= 0 ? true : false;
+                        	var outbound = $.inArray('outbound_cnam', v.features) >= 0 ? true : false;
+                        	v.e911 = $.inArray('dash_e911', v.features) >= 0 ? true : false;
+                        	v.caller_id = { inbound: inbound, outbound: outbound };
+                        	tab_data.push(['', k, v.caller_id, v.e911, v.state]);
+                    	});
+                    }
 
                     winkstart.table.numbers_manager.fnAddData(tab_data);
 
@@ -1028,8 +1083,14 @@ winkstart.module('numbers', 'numbers_manager', {
                 {
                     'sTitle': 'Caller-ID',
                     'fnRender': function(obj) {
-                        var cid = 'cid ' + (obj.aData[obj.iDataColumn] ? 'active' : 'inactive');
-                        return '<a class="'+ cid  +'">CID</a>';
+                        var link = '<a class="cid inactive">Outbound</a>' + ' / ' + '<a class="cid_inbound inactive">Inbound</a>'
+                        if(typeof obj.aData[obj.iDataColumn] === 'object') {
+                            var cid_outbound = 'cid ' + (obj.aData[obj.iDataColumn].outbound ? 'active' : 'inactive');
+                            var cid_inbound = 'cid_inbound ' + (obj.aData[obj.iDataColumn].inbound ? 'active' : 'inactive');
+
+                            link = '<a class="'+cid_outbound+'">Outbound</a>' + ' / ' + '<a class="'+cid_inbound+'">Inbound</a>'
+                        }
+                        return link;
                     },
                     'bSortable': false
                 },

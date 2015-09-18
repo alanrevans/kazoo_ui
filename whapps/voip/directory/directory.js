@@ -205,6 +205,10 @@ winkstart.module('voip', 'directory', {
                     });
                 }
             }
+
+            if(users_count === 0) {
+                success();
+            }
         },
 
         edit_directory: function(data, _parent, _target, _callbacks, data_defaults){
@@ -246,57 +250,74 @@ winkstart.module('voip', 'directory', {
                     }
                 };
 
-            winkstart.request(true, 'callflow.list', {
-                    account_id: winkstart.apps['voip'].account_id,
-                    api_url: winkstart.apps['voip'].api_url
-                },
-                function(_data, status) {
-                    var list_callflows = [];
-                    $.each(_data.data, function() {
-                        if(this.featurecode == false) {
-                            list_callflows.push(this);
-                        }
-                    });
-                    defaults.field_data.callflows = list_callflows;
-
-                    winkstart.request(true, 'user.list', {
-                            account_id: winkstart.apps['voip'].account_id,
-                            api_url: winkstart.apps['voip'].api_url
-                        },
-                        function(_data, status) {
-                            defaults.field_data.users = _data.data;
-
-                            if(typeof data == 'object' && data.id) {
-                                winkstart.request(true, 'directory.get', {
-                                        account_id: winkstart.apps['voip'].account_id,
-                                        api_url: winkstart.apps['voip'].api_url,
-                                        directory_id: data.id
-                                    },
-                                    function(_data, status) {
-                                        var render_data = $.extend(true, defaults, _data);
-                                        render_data.field_data.old_list = {};
-                                        if('users' in _data.data) {
-                                            $.each(_data.data.users, function(k, v) {
-                                                render_data.field_data.old_list[v.user_id] = v.callflow_id;
-                                            });
-                                        }
-                                        THIS.render_directory(render_data, target, callbacks);
-
-                                        if(typeof callbacks.after_render == 'function') {
-                                            callbacks.after_render();
-                                        }
+            winkstart.parallel({
+                    callflow_list: function(callback) {
+                        winkstart.request(true, 'callflow.list', {
+                                account_id: winkstart.apps['voip'].account_id,
+                                api_url: winkstart.apps['voip'].api_url
+                            },
+                            function(_data, status) {
+                                var list_callflows = [];
+                                $.each(_data.data, function() {
+                                    if(this.featurecode == false) {
+                                        list_callflows.push(this);
                                     }
-                                );
-                            }
-                            else {
-                                THIS.render_directory(defaults, target, callbacks);
+                                });
+                                defaults.field_data.callflows = list_callflows;
 
-                                if(typeof callbacks.after_render == 'function') {
-                                    callbacks.after_render();
-                                }
+                                callback(null, _data);
                             }
+                        );
+                    },
+                    user_list: function(callback) {
+                        winkstart.request(true, 'user.list', {
+                                account_id: winkstart.apps['voip'].account_id,
+                                api_url: winkstart.apps['voip'].api_url
+                            },
+                            function(_data, status) {
+                                defaults.field_data.users = _data.data;
+
+                                callback(null, _data);
+                            }
+                        );
+                    },
+                    directory_get: function(callback) {
+                        if(typeof data === 'object' && data.id) {
+                            winkstart.request(true, 'directory.get', {
+                                    account_id: winkstart.apps['voip'].account_id,
+                                    api_url: winkstart.apps['voip'].api_url,
+                                    directory_id: data.id
+                                },
+                                function(_data, status) {
+                                    defaults.field_data.old_list = {};
+
+                                    if('users' in _data.data) {
+                                        $.each(_data.data.users, function(k, v) {
+                                            defaults.field_data.old_list[v.user_id] = v.callflow_id;
+                                        });
+                                    }
+
+                                    callback(null, _data);
+                                }
+                            );
                         }
-                    );
+                        else {
+                            callback(null, {});
+                        }
+                    }
+                },
+                function(err, results) {
+                    var render_data = defaults;
+
+                    if(typeof data === 'object' && data.id) {
+                        render_data = $.extend(true, defaults, results.directory_get);
+                    }
+
+                    THIS.render_directory(render_data, target, callbacks);
+
+                    if(typeof callbacks.after_render == 'function') {
+                        callbacks.after_render();
+                    }
                 }
             );
         },
@@ -574,9 +595,14 @@ winkstart.module('voip', 'directory', {
                     ],
                     isUsable: 'true',
                     caption: function(node, caption_map) {
-                        var id = node.getMetadata('id');
+                        var id = node.getMetadata('id'),
+                            returned_value = '';
 
-                        return (id) ? caption_map[id].name : '';
+                        if(id in caption_map) {
+                            returned_value = caption_map[id].name;
+                        }
+
+                        return returned_value;
                     },
                     edit: function(node, callback) {
                         var _this = this;

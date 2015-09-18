@@ -86,6 +86,93 @@
         return popup;
     };
 
+    winkstart.charges = function(data, callback_ok, callback_cancel) {
+        var html,
+            popup,
+            ok = false,
+            activation_charges = (typeof data.activation_charges) ? null : data.activation_charges,
+            activation_charges_description = (typeof data.activation_charges_description === "undefined") ? null : data.activation_charges_description.replace("_", " "),
+            dataTemplate,
+            content,
+            options = {
+                title: 'Charges summary',
+                maxWidth: 'auto',
+                width: 'auto',
+                onClose: function() {
+                    if (ok) {
+                        if (typeof callback_ok == 'function') {
+                            callback_ok();
+                        }
+                    } else {
+                        if (typeof callback_cancel == 'function') {
+                            callback_cancel();
+                        }
+                    }
+                }
+            },
+            formatData = function(data) {
+                var totalAmount = 0,
+                    charges_description = data.activation_charges_description,
+                    renderData = [];
+
+                $.each(data, function(categoryName, category) {
+                    if (categoryName != 'activation_charges' && categoryName != 'activation_charges_description') {
+                        $.each(category, function(itemName, item) {
+                            var discount = item.single_discount_rate + (item.cumulative_discount_rate * item.cumulative_discount),
+                                monthlyCharges = parseFloat(((item.rate * item.quantity) - discount) || 0).toFixed(2);
+
+                            if(monthlyCharges > 0) {
+                                renderData.push({
+                                    service: itemName.toUpperCase().replace("_"," "),
+                                    rate: item.rate || 0,
+                                    quantity: item.quantity || 0,
+                                    discount: discount > 0 ? '- $' + parseFloat(discount).toFixed(2) : '',
+                                    monthlyCharges: monthlyCharges
+                                });
+
+                                totalAmount += parseFloat(monthlyCharges);
+                            }
+                        });
+                    }
+                });
+
+                var sortByPrice = function(a, b) {
+                    return parseFloat(a.monthlyCharges) >= parseFloat(b.monthlyCharges) ? -1 : 1;
+                };
+
+                renderData.sort(sortByPrice);
+
+                return renderData;
+            };
+
+        dataTemplate = formatData(data)[0];
+
+        content = 'Here is the detail of the monthly charges attached to your account for this service:';
+
+        if ( activation_charges !== null && activation_charges_description !== null ) {
+            if ( activation_charges === 0 ) {
+                content = 'There is no ' + activation_charges_description + '. ';
+            } else {
+                content = 'You will pay a $' + activation_charges + ' one-time ' + activation_charges_description + '. ';
+            }
+        }
+
+        html = $('<div class="center"><div class="alert_img confirm_alert"></div><div class="alert_text_wrapper info_alert charges-info">' + content + '</div><div class="alert_text_wrapper info_alert"><table class="charges-summary"><thead><tr><th>Service</th><th>Rate</th><th></th><th>Quantity</th><th>Discount</th><th>Monthly Charges</th></tr></thead><tbody><tr><td>' + dataTemplate.service + '</td><td>$' + dataTemplate.rate + '</td><td>X</td><td>' + dataTemplate.quantity + '</td><td>' + dataTemplate.discount + '</td><td>$' + dataTemplate.monthlyCharges + '</td></tr></tbody></table></div><div class="alert_text_wrapper info_alert charges-info">Press OK to continue or Cancel to abort the process.</div><div class="clear"/><div class="alert_buttons_wrapper"><button id="confirm_button" class="btn success confirm_button">OK</button><button id="cancel_button" class="btn danger confirm_button">Cancel</button></div></div>');
+
+        popup = winkstart.dialog(html, options);
+
+        $('#confirm_button', html).click(function() {
+            ok = true;
+            popup.dialog('close');
+        });
+
+        $('#cancel_button', html).click(function() {
+            popup.dialog('close');
+        });
+
+        return popup;
+    };
+
     winkstart.alert = function(type, content, callback) {
         var html,
             popup,
@@ -264,22 +351,30 @@
 
     winkstart.link_form = function(html){
         $('input', html).bind('change.link keyup.link focus.link', function() {
-            var name = $(this).attr('name'),
-                type = $(this).attr('type'),
-                value = $(this).val(),
+            var input = $(this),
+            	name = input.attr('name'),
+                type = input.attr('type'),
+                value = input.val(),
+                id = input.attr('id'),
                 input_fields = $('input[name="' + name + '"]', html);
 
             if(input_fields.size() > 1) {
                 if(type == 'checkbox'){
                     input_fields = input_fields.filter('[value='+value+']');
-                    ($(this).attr('checked')) ? input_fields.attr('checked', 'checked') : input_fields.removeAttr('checked');
+                    (input.attr('checked')) ? input_fields.attr('checked', 'checked') : input_fields.removeAttr('checked');
                 }
                 else {
-                    input_fields.val($(this).val());
+                	$.each(input_fields, function(k, v) {
+                		var element = $(v);
+
+                		if(element.attr('id') !== id) {
+                			element.val(value);
+						}
+                	});
                 }
             }
             else {
-                $(this).unbind('.link');
+                input.unbind('.link');
             }
         });
     };
@@ -372,20 +467,37 @@
         this.target = target;
         this.data = data;
         this.options = {
-            backgroundColor: 'transparent',
-            pieSliceText: 'value',
-            pieSliceBorderColor: 'transparent',
-            legend: {
-                textStyle: {
-                    color: 'white'
+            seriesDefaults: {
+                renderer: jQuery.jqplot.PieRenderer,
+                rendererOptions: {
+                    showDataLabels: true,
+                    dataLabels: 'value',
+                    startAngle: -90,
+                    padding: 10
                 }
+            },
+            grid: {
+                background: 'transparent',
+                drawBorder: false,
+                shadow: false
+            },
+            gridPadding: { top: 15, right: 0, bottom: 0, left: 0 },
+            legend: {
+                show: true,
+                location: 'e',
+                background: 'transparent',
+                border: 'none',
+                fontFamily: 'Helvetica',
+                fontSize: '8pt'
             }
         };
-        if(type){
-            this.type = type;
-        }
 
         $.extend(true, this.options, opt);
+
+        // 'type' not used yet as we only use piecharts for now. To be implemented if other types of charts are needed.
+        if(type) {
+            this.type = type;
+        }
 
         return this.init();
     };
@@ -393,30 +505,17 @@
     winkstart.chart.prototype = {
         init: function() {
             var THIS = this;
-
-            function loadChart() {
-                THIS.loadChart(THIS);
-            }
-
-            google.load("visualization", "1", {
-                packages:["corechart", "gauge"],
-                callback: loadChart
-            });
+            THIS.loadChart(THIS);
         },
 
-        loadChart: function(THIS){
+        loadChart: function(THIS) {
             switch(THIS.type) {
-                case 'line':
-                    THIS.chart = new google.visualization.LineChart(document.getElementById(THIS.target));
-                    break;
-                case 'gauge':
-                    THIS.chart = new google.visualization.Gauge(document.getElementById(THIS.target));
-                    break;
+                case 'line': //TODO: To be implemented if needed
+                case 'gauge': //TODO: To be implemented if needed
                 default:
-                    THIS.chart = new google.visualization.PieChart(document.getElementById(THIS.target));
+                    THIS.chart = jQuery.jqplot(THIS.target, [THIS.data], THIS.options);
                     break;
             }
-            THIS.chart.draw(google.visualization.arrayToDataTable(THIS.data), THIS.options);
         },
 
         setData: function(data, push) {
@@ -436,8 +535,7 @@
         },
 
         refresh: function() {
-            var data = google.visualization.arrayToDataTable(this.data);
-            this.chart.draw(data, this.options);
+            this.chart = jQuery.jqplot(THIS.target, [THIS.data], THIS.options);
         }
     };
 
@@ -479,36 +577,17 @@
     },
 
     winkstart.jsonToString = function(obj) {
+        return JSON.stringify(obj);
+    },
 
-        var objToString = function(arr, level) {
-                var dumped_text = "";
-
-                if(!level) level = 0;
-
-                if(typeof(arr) == 'object') {
-                    for(var item in arr) {
-                        var value = arr[item];
-
-                        if(typeof(value) == 'object') {
-                           dumped_text +=  '"' + item + '": {';
-                           dumped_text += objToString(value, level+1);
-                           dumped_text +=  "}, ";
-                        } else {
-                           dumped_text += '"' + item + '": "' + value + '", ';
-                        }
-                    }
-                } else {
-                    dumped_text = "===>"+arr+"<===("+typeof(arr)+")";
-                }
-
-                return dumped_text;
-            },
-            str = "";
-
-        str += objToString(obj);
-
-        return str;
-
-    }
+    /* If we want to limit the # of simultaneous request, we can use async.parallelLimit(list_functions, LIMIT_# (ex: 3), callback) */
+    winkstart.parallel = function(list_functions, callback) {
+        async.parallel(
+            list_functions,
+            function(err, results) {
+                callback(err, results);
+            }
+        );
+    };
 
 })(window.winkstart = window.winkstart || {}, window.amplify = window.amplify || {}, jQuery);

@@ -21,12 +21,12 @@ winkstart.module('auth', 'onboarding', {
         validation: {
             //phone_number
             step1: [
-                { name: '#e911_street_address',     regex: /^.+$/ },
+                /*{ name: '#e911_street_address',     regex: /^.+$/ },
                 { name: '#e911_extended_address',   regex: /^.*$/ },
                 { name: '#e911_region',             regex: /^[a-zA-Z\_\-\s]+$/ },
                 { name: '#e911_locality',           regex: /^[a-zA-Z\_\-\s]+$/ },
                 { name: '#e911_country',            regex: /^[a-zA-Z\_\-\s]+$/ },
-                { name: '#e911_postal_code',        regex: /^[0-9\-]{4,10}$/ }
+                { name: '#e911_postal_code',        regex: /^[0-9\-]{4,10}$/ }*/
             ],
             //braintree
             step2: [
@@ -105,14 +105,14 @@ winkstart.module('auth', 'onboarding', {
                     if(errors.phone_numbers[number].data.carrier_fault) {
                         msg += 'Number already used! Please select another one.'
                     }
-                    
+
                 }
             });
 
             winkstart.alert('error', {
                 'text': msg,
                 data: formated_data
-            });     
+            });
         },
 
         parse_username: function(username) {
@@ -143,10 +143,6 @@ winkstart.module('auth', 'onboarding', {
 
             if(form_data.extra.braintree_country_other != '') {
                 form_data.braintree.credit_card.billing_address.country = form_data.extra.braintree_country_other;
-            }
-
-            if(form_data.extra.e911_country_other != '') {
-                form_data.e911.country = form_data.extra.e911_country_other;
             }
 
             form_data.braintree.credit_card.number = form_data.braintree.credit_card.number.replace(/\s\-/g,'');
@@ -218,10 +214,10 @@ winkstart.module('auth', 'onboarding', {
             };
 
             form_data.account.available_apps = winkstart.config.onboard_roles ? winkstart.config.onboard_roles[form_data.account.role || 'default'].available_apps : [];
-            form_data.account.default_api_url = winkstart.config.onboard_roles ? winkstart.config.onboard_roles[form_data.account.role || 'default'].default_api_url : '' ;
 
             form_data.phone_numbers = {};
-            form_data.phone_numbers[number] = { dash_e911: form_data.e911 };
+            //form_data.phone_numbers[number] = { dash_e911: form_data.e911 };
+            form_data.phone_numbers[number] = {};
 
             delete form_data.e911;
             delete form_data.field_data;
@@ -573,7 +569,7 @@ winkstart.module('auth', 'onboarding', {
 
                         THIS.clean_form_data(form_data, onboard_html);
 
-                        form_data.invite_code = args.invite_code;
+                        //form_data.invite_code = args.invite_code;
 
                         winkstart.request(true, 'onboard.create', {
                                 api_url: winkstart.apps['auth'].api_url,

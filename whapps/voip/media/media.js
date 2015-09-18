@@ -209,7 +209,7 @@ winkstart.module('voip', 'media', {
             );
         },
 
-        render_media: function(data, target, callbacks){
+        render_media: function(data, target, callbacks) {
             var THIS = this,
                 media_html = THIS.templates.edit.tmpl(data),
                 file;
@@ -260,6 +260,27 @@ winkstart.module('voip', 'media', {
                 }
             });
 
+            function changeType($select) {
+                var type = $select.val();
+
+                switch(type) {
+                    case 'tts':
+                        $('.tts', media_html).show();
+                        $('.file', media_html).hide();
+                        break;
+                    case 'upload':
+                        $('.tts', media_html).hide();
+                        $('.file', media_html).show();
+                        break;
+                }
+            }
+
+            changeType($('#media_type', media_html));
+
+            $('#media_type', media_html).change(function() {
+                changeType($(this));
+            });
+
             $('.media-save', media_html).click(function(ev) {
                 ev.preventDefault();
 
@@ -269,19 +290,25 @@ winkstart.module('voip', 'media', {
                         form_data = THIS.clean_form_data(form_data);
 
                         THIS.save_media(form_data, data, function(_data, status) {
-                                if($('#upload_div', media_html).is(':visible') && $('#file').val() != '') {
-                                    if(file === 'updating') {
-                                        winkstart.alert('The file you want to apply is still being processed by the page. Please wait a couple of seconds and try again.');
+                                if(!form_data.tts) {
+                                    if($('#upload_div', media_html).is(':visible') && $('#file').val() != '') {
+                                        if(file === 'updating') {
+                                            winkstart.alert('The file you want to apply is still being processed by the page. Please wait a couple of seconds and try again.');
+                                        }
+                                        else {
+                                            THIS.upload_file(file, _data.data.id, function() {
+                                                if(typeof callbacks.save_success == 'function') {
+                                                    callbacks.save_success(_data, status);
+                                                }
+                                            });
+                                        }
                                     }
                                     else {
-                                        THIS.upload_file(file, _data.data.id, function() {
-                                            if(typeof callbacks.save_success == 'function') {
-                                                callbacks.save_success(_data, status);
-                                            }
-                                        });
+                                        if(typeof callbacks.save_success == 'function') {
+                                            callbacks.save_success(_data, status);
+                                        }
                                     }
-                                }
-                                else {
+                                } else {
                                     if(typeof callbacks.save_success == 'function') {
                                         callbacks.save_success(_data, status);
                                     }
@@ -316,6 +343,14 @@ winkstart.module('voip', 'media', {
                 delete form_data.description;
             }
 
+            if(form_data.media_source == 'tts') {
+                form_data.description = "tts file";
+            } else {
+                delete form_data.tts;
+            }
+
+            delete form_data.media_type;
+
             return form_data;
         },
 
@@ -343,6 +378,10 @@ winkstart.module('voip', 'media', {
 
             if('field_data' in form_data) {
                 delete form_data.field_data;
+            }
+
+            if(form_data.media_source == 'upload') {
+                delete form_data.tts;
             }
 
             return form_data;
@@ -451,9 +490,14 @@ winkstart.module('voip', 'media', {
                     ],
                     isUsable: 'true',
                     caption: function(node, caption_map) {
-                        var id = node.getMetadata('id');
+                        var id = node.getMetadata('id'),
+                            returned_value = '';
 
-                        return (id) ? caption_map[id].name : '';
+                        if(id in caption_map) {
+                            returned_value = caption_map[id].name;
+                        }
+
+                        return returned_value;
                     },
                     edit: function(node, callback) {
                         var _this = this;

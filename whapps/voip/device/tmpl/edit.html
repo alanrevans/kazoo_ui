@@ -16,11 +16,11 @@
         <ul class="tabs" data-tabs="tabs">
             <li class="active"><a href="#basic">Basic</a></li>
             <li><a href="#caller_id">Caller ID</a></li>
-            <li><a href="#sip_settings">SIP Settings</a></li>
-            <li><a href="#audio_settings">Audio Settings</a></li>
-            <li><a href="#video_settings">Video Settings</a></li>
-            <li><a href="#fax_support">Fax Support</a></li>
-            <li><a href="#ringtones">Ringtones</a></li>
+            <li><a href="#sip_settings">SIP</a></li>
+            <li><a href="#audio_settings">Audio</a></li>
+            <li><a href="#video_settings">Video</a></li>
+            <li><a href="#options">Options</a></li>
+            <li><a href="#restrictions">Restrictions</a></li>
         </ul>
         <form id="device-form" action="" method="post">
             <div class="pill-content">
@@ -59,7 +59,7 @@
                     <div class="clearfix">
                         <label for="mac_address">Device MAC Address</label>
                         <div class="input">
-                            <input class="span4" id="mac_address" name="mac_address" type="text" placeholder="01:23:45:67:89:AB" value="${data.mac_address}" rel="popover" data-content="Enter the MAC Address of this device formatted like: 1A:B2:C6:78:F0:3B"/>
+                            <input class="span4" id="mac_address" name="mac_address" type="text" placeholder="01:23:45:67:89:AB" value="${data.mac_address}" rel="popover"/>
                             <span class="provisioner"></span>
                         </div>
                     </div>
@@ -115,7 +115,7 @@
                     <div class="clearfix">
                         <label for="caller_id_number_internal">Caller ID Number</label>
                         <div class="input">
-                            <input class="span4" id="caller_id_number_internal" name="caller_id.internal.number" type="text" placeholder="555-555-5555" value="${data.caller_id.internal.number}" rel="popover" data-content="Define the Caller ID Number of this Device for In-House Calls."/>
+                            <input class="span4" id="caller_id_number_internal" name="caller_id.internal.number" type="text" placeholder="+1555-555-5555" value="${data.caller_id.internal.number}" rel="popover" data-content="Define the Caller ID Number of this Device for In-House Calls."/>
                         </div>
                     </div>
                     <hr />
@@ -131,7 +131,7 @@
                     <div class="clearfix">
                         <label for="caller_id_number_external">Caller ID Number</label>
                         <div class="input">
-                            <input class="span4" id="caller_id_number_external" name="caller_id.external.number" type="text" placeholder="555-555-5555" value="${data.caller_id.external.number}" rel="popover" data-content="Define the Caller ID Number of this Device for Outbound Calls."/>
+                            <input class="span4" id="caller_id_number_external" name="caller_id.external.number" type="text" placeholder="+1555-555-5555" value="${data.caller_id.external.number}" rel="popover" data-content="Define the Caller ID Number of this Device for Outbound Calls."/>
                         </div>
                     </div>
                     <hr />
@@ -147,7 +147,7 @@
                     <div class="clearfix">
                         <label for="caller_id_number_emergency">Caller ID Number</label>
                         <div class="input">
-                            <input class="span4" id="caller_id_number_emergency" name="caller_id.emergency.number" type="text" placeholder="555-555-5555" value="${data.caller_id.emergency.number}" rel="popover" data-content="Define the Caller ID Number of this Device for Emergency Calls."/>
+                            <input class="span4" id="caller_id_number_emergency" name="caller_id.emergency.number" type="text" placeholder="+1555-555-5555" value="${data.caller_id.emergency.number}" rel="popover" data-content="Define the Caller ID Number of this Device for Emergency Calls."/>
                         </div>
                     </div>
                 </div>
@@ -253,11 +253,11 @@
                     </div>
 
                     <div class="clearfix">
-                        <label for="media_bypass_media">Peer to Peer Audio</label>
+                        <label for="media_peer_to_peer">Peer to Peer Audio</label>
                         <div class="input">
-                            <select name="media.bypass_media" id="media_bypass_media" class="medium" rel="popover" data-content="Select the kind of Peer-to-Peer that you would like to set on this device">
-                                {{each(key, val) field_data.media.bypass_media_options}}
-                                    {{if data.media.bypass_media == key}}
+                            <select name="media.peer_to_peer" id="media_peer_to_peer" class="medium" rel="popover" data-content="Select the kind of Peer-to-Peer that you would like to set on this device">
+                                {{each(key, val) field_data.media.peer_to_peer_options}}
+                                    {{if data.media.peer_to_peer == key}}
                                         <option value="${key}" selected="selected">${val}</option>
                                     {{else}}
                                         <option value="${key}">${val}</option>
@@ -266,6 +266,23 @@
                             </select>
                         </div>
                     </div>
+
+					<div class="clearfix">
+						<div class="input">
+							<ul class="inputs-list">
+								<li>
+									<label>
+										{{if data.media.secure_rtp }}
+							                <input type="checkbox" id="media_audio_codecs" name="media.secure_rtp" checked="checked" rel="popover" data-content=""/>
+							            {{else}}
+							                <input type="checkbox" id="media_audio_codecs" name="media.secure_rtp" rel="popover" data-content=""/>
+							            {{/if}}
+							            <span>Enable Secure RTP</span>
+							        </label>
+							    </li>
+							</ul>
+						</div>
+					</div>
 
                     {{each(key, val) field_data.media.audio.codecs}}
                         <div class="clearfix">
@@ -308,7 +325,7 @@
                     {{/each}}
                 </div>
 
-                <div id="fax_support">
+                <div id="options">
                     <div class="clearfix">
                         <label for="media_fax_option">T.38</label>
                         <div class="input">
@@ -324,10 +341,6 @@
                         </div>
                     </div>
 
-                    <input type="hidden" name="media.fax.option" value="false"/>
-                </div>
-
-                <div id="ringtones">
                     <div class="clearfix">
                         <label for="ringtones_internal">Internal Ringtones</label>
                         <div class="input">
@@ -341,6 +354,82 @@
                             <input class="span4" id="ringtones_external" name="ringtones.external" type="text" placeholder="" value="${data.ringtones.external}" rel="popover" data-content="The alert info SIP header added when the call is from external sources"/>
                         </div>
                     </div>
+
+                    <div class="clearfix">
+                        <div class="input">
+                           <ul class="inputs-list">
+                               <li>
+                                    <label>
+                                        <span rel="popover" data-content="By checking this box, this endpoint will not be added automatically to the contact list of the devices of this platform">
+                                            {{if data.contact_list.exclude === true}}
+                                            <input id="contact_list_exclude" type="checkbox" name="contact_list.exclude" checked="checked" />
+                                            {{else}}
+                                            <input id="contact_list_exclude" type="checkbox" name="contact_list.exclude" />
+                                            {{/if}}
+                                            <span>Hide from Contact List</span>
+                                        </span>
+                                    </label>
+                                </li>
+                            </ul>
+                       </div>
+                    </div>
+
+                    <div class="clearfix">
+                        <div class="input">
+                           <ul class="inputs-list">
+                               <li>
+                                    <label>
+                                        <span rel="popover" data-content="When checked supporting phones will not show a call missed if it was part of a ring group answered elsewhere.">
+                                            {{if data.ignore_complete_elsewhere === true}}
+                                            <input id="ignore_complete_elsewhere" type="checkbox" name="ignore_complete_elsewhere" checked="checked" />
+                                            {{else}}
+                                            <input id="ignore_complete_elsewhere" type="checkbox" name="ignore_complete_elsewhere"/>
+                                            {{/if}}
+                                            <span>Ignore Complete Elsewhere</span>
+                                        </span>
+                                    </label>
+                                </li>
+                            </ul>
+                       </div>
+                    </div>
+                </div>
+
+                <div id="restrictions">
+                    <div class="clearfix">
+                        <div class="input">
+                            <ul class="inputs-list">
+                                <li>
+                                    <label>
+                                        <span rel="popover" data-content="If checked, this device will only be able to call the devices that are part of the same groups">
+                                            {{if data.call_restriction.closed_groups.action === 'deny'}}
+                                                <input type="checkbox" name="extra.closed_groups" checked="checked"/>
+                                            {{else}}
+                                                <input type="checkbox" name="extra.closed_groups"/>
+                                            {{/if}}
+                                            <span>Closed Groups</span>
+                                        </span>
+                                    </label>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    {{each(k, v) field_data.call_restriction}}
+                    <div class="clearfix">
+                        <label>${v.friendly_name}</label>
+                        <div class="input">
+                             <select name="call_restriction.${k}.action" class="medium" rel="popover">
+                                {{if data.call_restriction[k].action === 'deny'}}
+                                    <option value="deny" selected>Deny</option>
+                                    <option value="inherit">Inherit</option>
+                                {{else}}
+                                    <option value="deny">Deny</option>
+                                    <option value="inherit" selected>Inherit</option>
+                                {{/if}}
+                            </select>
+                        </div>
+                    </div>
+                    {{/each}}
                 </div>
             </div>
         </form>

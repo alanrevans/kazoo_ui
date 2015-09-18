@@ -18,7 +18,8 @@ winkstart.module('core', 'layout', {
         },
 
         subscribe: {
-            'layout.detect_logo': 'detect_and_set_logo'
+            'layout.detect_logo': 'detect_and_set_logo',
+            'layout.render_welcome': 'render_welcome'
         },
 
         resources: {
@@ -43,7 +44,10 @@ winkstart.module('core', 'layout', {
         THIS.attach();
 
         if(!$.cookie('c_winkstart_auth')) {
-            THIS.render_welcome();
+            //IF NOT EXTERNAL LOGIN
+            if(!('c' in URL_DATA && 'a' in URL_DATA && 'f' in URL_DATA)) {
+                THIS.render_welcome();
+            }
         }
 
         /*$('#ws-content .welcomediv').click(function() {
@@ -78,18 +82,38 @@ winkstart.module('core', 'layout', {
     {
         attach: function() {
             var THIS = this,
+                timeout,
                 domain = URL.match(/^(?:https?:\/\/)*([^\/?#]+).*$/)[1],
                 layout_html = THIS.templates.layout.tmpl().appendTo(THIS.parent),
                 api_url = winkstart.config.whitelabel_api_url || winkstart.apps['auth'].api_url;
 
-            $("#loading").ajaxStart(function(){
+            if(winkstart.config.hide_powered) {
+                $('#powered', layout_html).remove();
+            }
+
+            $('#loading').ajaxStart(function(){
+                $('#loading .close-button').hide();
                 $(this).show();
+                timeout = setTimeout(function() {
+                    if($('#loading').is(':visible')) {
+                        $('#loading .close-button').show();
+                    }
+                }, 10000);
             }).ajaxStop(function(){
                 $(this).hide();
+                clearTimeout(timeout);
             }).ajaxError(function(){
                 if($.active === 0) {
                     $(this).hide();
+                    clearTimeout(timeout);
                 }
+            });
+
+            $('#loading .close-button').click(function() {
+                $('#loading').hide();
+                clearTimeout(timeout);
+
+                if($.active > 0) { $.active--; }
             });
 
             winkstart.get_version(function(version) {
@@ -97,8 +121,10 @@ winkstart.module('core', 'layout', {
             });
 
             $('#ws-topbar .brand.logo', layout_html).click(function() {
-                $('.whapps .whapp > a').removeClass('activate');
-                winkstart.publish('auth.landing');
+            	if ($.cookie('c_winkstart_auth')){
+            		$('.whapps .whapp > a').removeClass('activate');
+            		winkstart.publish('auth.landing');
+            	}
             });
 
             winkstart.request('layout.get_logo', {
@@ -119,20 +145,24 @@ winkstart.module('core', 'layout', {
             );
         },
 
-        render_welcome: function() {
+        render_welcome: function(args) {
             var THIS = this;
-            if(navigator.appName == 'Microsoft Internet Explorer') {
+            /*if(navigator.appName == 'Microsoft Internet Explorer') {
                 THIS.templates.not_supported_browsers.tmpl().appendTo($('#ws-content'));
             }
-            else {
+            else {*/
                 layout_welcome_html = THIS.templates.layout_welcome.tmpl().appendTo($('#ws-content'));
-                var data_welcome = { 
-                    company_name: winkstart.config.company_name, 
+
+                var data_welcome = {
+                    company_name: winkstart.config.company_name,
                     company_website: winkstart.config.company_website,
                     learn_more: winkstart.config.nav.learn_more || "http://www.2600hz.com/"
                 };
+
                 THIS.templates.left_welcome.tmpl(data_welcome).appendTo($('.welcome-page-top .left_div', layout_welcome_html));
-            }
+
+                args && args.callback && args.callback();
+            //}
         },
 
         detect_and_set_logo: function() {

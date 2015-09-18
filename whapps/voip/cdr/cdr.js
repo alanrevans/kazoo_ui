@@ -27,6 +27,16 @@ winkstart.module('voip', 'cdr', {
 			url: '{api_url}/accounts/{account_id}/cdrs?created_from={created_from}&created_to={created_to}',
 			contentType: 'application/json',
 			verb: 'GET'
+        },
+        'cdr.from_queue': {
+			url: '{api_url}/accounts/{account_id}/cdrs?created_from={created_from}&created_to={created_to}&has_key={filter}',
+			contentType: 'application/json',
+			verb: 'GET'
+        },
+        'cdr.not_from_queue': {
+			url: '{api_url}/accounts/{account_id}/cdrs?created_from={created_from}&created_to={created_to}&key_missing={filter}',
+			contentType: 'application/json',
+			verb: 'GET'
         }
 	}
 },
@@ -45,8 +55,9 @@ function(args) {
 {
     cdr_range: 7,
 
-    list_by_date: function(start_date, end_date) {
+    list_by_date: function(start_date, end_date, filter) {
         var THIS = this,
+            filter = filter || '',
             map_users = {},
             parse_duration = function(duration, type) {
                 var duration = parseFloat(duration);
@@ -103,65 +114,86 @@ function(args) {
                 return cdr_id.substr(0,1) + '/' + cdr_id.substr(1,1) + '/' + cdr_id.substr(2,1) + '/' + cdr_id;
             };
 
-        winkstart.request(true, 'user.list', {
-                account_id: winkstart.apps['voip'].account_id,
-                api_url: winkstart.apps['voip'].api_url
+        winkstart.parallel({
+                user_list: function(callback) {
+                    winkstart.request(true, 'user.list', {
+                            account_id: winkstart.apps['voip'].account_id,
+                            api_url: winkstart.apps['voip'].api_url
+                        },
+                        function(_data, status) {
+                            $.each(_data.data, function() {
+                                map_users[this.id] = this;
+                            });
+
+                            callback(null, _data);
+                        }
+                    );
+                },
+                cdr_list: function(callback) {
+                    var request_string = 'cdr.list_by_week',
+                        data_request = {
+                            account_id: winkstart.apps['voip'].account_id,
+                            api_url: winkstart.apps['voip'].api_url,
+                            created_from: start_date,
+                            created_to: end_date
+                        };
+
+                    if(filter === 'queue') {
+                        request_string = 'cdr.from_queue';
+                        data_request.filter = 'custom_channel_vars.queue_id';
+                    }
+                    else if(filter === 'non-queue') {
+                        request_string = 'cdr.not_from_queue';
+                        data_request.filter = 'custom_channel_vars.queue_id';
+                    }
+
+                    winkstart.request(true, request_string, data_request,
+                        function(_data, status) {
+                            callback(null, _data);
+                        }
+                    );
+                }
             },
-            function(_data, status) {
-                $.each(_data.data, function() {
-                    map_users[this.id] = this;
+            function(err, results) {
+                 var cdr_id,
+                    owner_id,
+                    user_name,
+                    duration,
+                    humanFullDate,
+                    web_browser_id,
+                    call_duration = 0,
+                    cost;
+
+                var tab_data = [];
+
+                $.each(results.cdr_list.data, function() {
+                    cdr_id = this.cid || this.id;
+                    user_name = this.owner_id ? find_user_name(this.owner_id) : '',
+                    duration = this.duration_seconds >= 0 ? parse_duration(this.duration_seconds) : '--';
+                    humanFullDate = parse_date(this.timestamp);
+                    web_browser_id = parse_cdr_id(cdr_id);
+                    call_duration += this.billing_seconds >= 0 ? parseFloat(this.billing_seconds) : 0;
+                    cost = this.cost ? '$' + parseFloat((this.cost)/10000).toFixed(2) : '-';
+
+                    tab_data.push([
+                        this.caller_id_number === this.caller_id_name ? this.caller_id_number || '(empty)' : this.caller_id_number + ' (' + this.caller_id_name+')',
+                        this.callee_id_number === this.callee_id_name ? this.callee_id_number || ((this.to) ? this.to.substring(0, this.to.indexOf('@') != -1 ? this.to.indexOf('@') : this.to.length) : '(empty)') || '(empty)' : this.callee_id_number + ' (' + this.callee_id_name+')',
+                        user_name ? '<a href="javascript:void(0);" id="'+ this.owner_id +'" class="table_owner_link">'+user_name+'</a>' : 'No Owner',
+                        duration || '-',
+                        this.hangup_cause || '-',
+                        /*'<a href="' + winkstart.config.logs_web_server_url + web_browser_id + '.log" target="_blank">Log</a>&nbsp;|&nbsp;' +*/
+                        '<a href="javascript:void(0);" data-cdr_id="'+cdr_id+'"  class="table_detail_link">Details</a>',
+                        cost,
+                        humanFullDate,
+                        cdr_id,
+                        this.billing_seconds || ''
+                    ]);
                 });
 
-                winkstart.request(true, 'cdr.list_by_week', {
-                        account_id: winkstart.apps['voip'].account_id,
-                        api_url: winkstart.apps['voip'].api_url,
-                        created_from: start_date,
-                        created_to: end_date
-                    },
-                    function(_data, status) {
-                        var cdr_id,
-                            owner_id,
-                            user_name,
-                            duration,
-                            humanFullDate,
-                            web_browser_id,
-                            call_duration = 0,
-                            cost;
+                call_duration = 'Total duration : ' + parse_duration(call_duration, 'verbose');
+                $('.call_duration', '#cdr-grid_wrapper').text(call_duration);
 
-                        var tab_data = [];
-
-                        $.each(_data.data, function() {
-                            //if(this.inception) {
-                                cdr_id = this.cid || this.id;
-                                user_name = this.owner_id ? find_user_name(this.owner_id) : '',
-                                duration = this.duration_seconds >= 0 ? parse_duration(this.duration_seconds) : '--';
-                                humanFullDate = parse_date(this.timestamp);
-                                web_browser_id = parse_cdr_id(cdr_id);
-                                call_duration += this.billing_seconds >= 0 ? parseFloat(this.billing_seconds) : 0;
-                                cost = this.cost ? '$' + parseFloat((this.cost)/10000).toFixed(2) : '-';
-
-                                tab_data.push([
-                                    this.caller_id_number === this.caller_id_name ? this.caller_id_number || '(empty)' : this.caller_id_number + ' (' + this.caller_id_name+')',
-                                    this.callee_id_number === this.callee_id_name ? this.callee_id_number || this.to.substring(0, this.to.indexOf('@') != -1 ? this.to.indexOf('@') : this.to.length) || '(empty)' : this.callee_id_number + ' (' + this.callee_id_name+')',
-                                    user_name ? '<a href="javascript:void(0);" id="'+ this.owner_id +'" class="table_owner_link">'+user_name+'</a>' : 'No Owner',
-                                    duration || '-',
-                                    this.hangup_cause || '-',
-                                    /*'<a href="' + winkstart.config.logs_web_server_url + web_browser_id + '.log" target="_blank">Log</a>&nbsp;|&nbsp;' +*/
-                                    '<a href="javascript:void(0);" data-cdr_id="'+cdr_id+'"  class="table_detail_link">Details</a>',
-                                    cost,
-                                    humanFullDate,
-                                    cdr_id,
-                                    this.billing_seconds
-                                ]);
-                            //}
-                        });
-
-                        call_duration = 'Total duration : ' + parse_duration(call_duration, 'verbose');
-                        $('.call_duration', '#cdr-grid_wrapper').text(call_duration);
-
-                        winkstart.table.cdr.fnAddData(tab_data);
-                    }
-                );
+                winkstart.table.cdr.fnAddData(tab_data);
             }
         );
     },
@@ -226,18 +258,24 @@ function(args) {
             return_sub_data,
             THIS = this;
 
+			function hide_fqdn(value) {
+				return value = (winkstart.config.hide_fqdn) ? value.replace('.2600hz.com','') : value;
+			}
+
         $.each(data, function(k, v) {
             if(typeof v == 'object') {
                 return_sub_data = THIS.parse_data_cdr(this);
 
                 $.each(return_sub_data, function(k2, v2) {
                     if(jQuery.inArray(v2.key, ['app_name', 'app_version', 'server_id', 'id']) < 0) {
+						v2.value = hide_fqdn(v2.value);
                         return_data.push({'key': v2.key, 'value': v2.value});
                     }
                 });
             }
             else {
                 if(jQuery.inArray(k, ['app_name', 'app_version', 'server_id', 'id']) < 0) {
+					v = hide_fqdn(v);
                     return_data.push({'key':k, 'value':v});
                 }
             }
@@ -257,7 +295,7 @@ function(args) {
 
 		$.fn.dataTableExt.afnFiltering.pop();
 
-		$('div.date', cdr_html).html('Start Date: <input id="startDate" readonly="readonly" type="text"/>&nbsp;&nbsp;End Date: <input id="endDate" readonly="readonly" type="text"/>&nbsp;&nbsp;&nbsp;&nbsp;<button class="btn primary button-search" id="searchLink">Filter</button><label class="call_duration"/>');
+		$('div.date', cdr_html).html('Start Date: <input id="startDate" readonly="readonly" type="text"/>&nbsp;&nbsp;End Date: <input id="endDate" readonly="readonly" type="text"/>&nbsp;&nbsp;&nbsp;&nbsp;<select id="dropdown_filter"><option value="all">All Calls</option><option value="queue">Queue Calls</option><option value="non-queue">Non-Queue Calls</option></select><button class="btn primary button-search" id="searchLink">Filter</button><label class="call_duration"/>');
 
         $(cdr_html).delegate('.table_owner_link','click', function() {
             winkstart.publish('user.popup_edit', { id: $(this).attr('id') });
@@ -271,6 +309,10 @@ function(args) {
                 $('.call_duration', '#cdr-grid_wrapper').show();
             }
         });
+
+        if(!('call_center' in winkstart.apps)) {
+            $('#dropdown_filter', cdr_html).hide();
+        }
 
         $(cdr_html).delegate('.table_detail_link','click', function() {
             var cdr_id = $(this).dataset('cdr_id');
@@ -322,7 +364,7 @@ function(args) {
                     end_date_sec = (new Date(end_date).getTime()/1000) + 62167219200;
 
                 if((end_date_sec - start_date_sec) <= (range*24*60*60)) {
-                    THIS.list_by_date(start_date_sec, end_date_sec);
+                    THIS.list_by_date(start_date_sec, end_date_sec, $('#dropdown_filter', cdr_html).val());
                 }
                 else {
                     winkstart.alert('The range is bigger than 7 days, please correct it.');
